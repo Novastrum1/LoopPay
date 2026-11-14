@@ -1,0 +1,13 @@
+{
+  "name": "LoopPay",
+  "image": "mcr.microsoft.com/devcontainers/typescript-node:1-22-bookworm",
+  "features": {
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {}
+  },
+  "postCreateCommand": "cd looppay && bash scripts/setup.sh",
+  "forwardPorts": [
+    3000,
+    5432,
+    8545
+  ]
+}

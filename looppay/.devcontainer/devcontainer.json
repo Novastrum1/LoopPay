@@ -1,0 +1,24 @@
+{
+  "name": "LoopPay",
+  "image": "mcr.microsoft.com/devcontainers/typescript-node:1-22-bookworm",
+  "features": {
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {}
+  },
+  "workspaceFolder": "/workspaces/LoopPay/looppay",
+  "postCreateCommand": "bash scripts/setup.sh",
+  "forwardPorts": [3000, 5432, 8545],
+  "portsAttributes": {
+    "3000": {
+      "label": "LoopPay web",
+      "onAutoForward": "notify"
+    },
+    "5432": {
+      "label": "Private Postgres",
+      "visibility": "private"
+    },
+    "8545": {
+      "label": "Private Anvil",
+      "visibility": "private"
+    }
+  }
+}
