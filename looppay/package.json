@@ -1,0 +1,42 @@
+{
+  "name": "looppay",
+  "private": true,
+  "packageManager": "pnpm@10.28.2",
+  "scripts": {
+    "dev": "pnpm --filter @looppay/web dev",
+    "build": "pnpm --filter @looppay/web build",
+    "lint": "eslint .",
+    "typecheck": "pnpm -r typecheck",
+    "test": "vitest run",
+    "test:contracts": "cd packages/contracts && forge test -vv",
+    "test:e2e": "pnpm --filter @looppay/web exec playwright test",
+    "db:up": "docker compose up -d --wait postgres",
+    "db:migrate": "node scripts/db.mjs migrate deploy",
+    "db:generate": "node scripts/db.mjs generate",
+    "indexer:dev": "pnpm --filter @looppay/indexer dev",
+    "contracts:anvil": "anvil --silent",
+    "contracts:deploy:local": "node scripts/deploy.mjs local",
+    "contracts:deploy:testnet": "node scripts/deploy.mjs testnet",
+    "contracts:verify:testnet": "node scripts/verify.mjs",
+    "abi": "node scripts/abi.mjs",
+    "demo:local": "tsx --env-file=.env packages/sdk/examples/local.ts",
+    "test:integration": "tsx --env-file=.env packages/sdk/examples/integration.ts",
+    "format": "prettier --write \"**/*.{ts,tsx,mjs,json,css,md,yml,yaml}\" && forge fmt --root packages/contracts",
+    "contracts:prepare:local": "node scripts/prepare-local.mjs"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.3",
+    "vitest": "^3.2.0",
+    "eslint": "^9.20.0",
+    "typescript-eslint": "^8.24.0",
+    "@eslint/js": "^9.20.0",
+    "@types/node": "^22.13.0",
+    "tsx": "^4.19.2",
+    "@foundry-rs/forge": "^1.7.1",
+    "@foundry-rs/anvil": "^1.7.1",
+    "@foundry-rs/cast": "^1.7.1",
+    "viem": "^2.45.0",
+    "prettier": "^3.5.3"
+  },
+  "type": "module"
+}
