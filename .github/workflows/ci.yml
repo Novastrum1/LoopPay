@@ -1,0 +1,40 @@
+name: LoopPay checks
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: looppay
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: looppay
+          POSTGRES_PASSWORD: local-development-only
+          POSTGRES_DB: looppay
+        ports: [5432:5432]
+        options: --health-cmd "pg_isready -U looppay" --health-interval 5s --health-retries 10
+    env:
+      DATABASE_URL: postgresql://looppay:local-development-only@localhost:5432/looppay
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: looppay/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm db:generate && pnpm db:migrate
+      - run: pnpm lint && pnpm typecheck
+      - run: pnpm test:contracts
+      - run: pnpm exec forge coverage --root packages/contracts --report summary
+      - run: pnpm abi && git diff --exit-code -- packages/sdk/src/abi.ts
+      - run: pnpm test && pnpm build
+      - run: pnpm --filter @looppay/web exec playwright install --with-deps chromium
+      - run: pnpm test:e2e
