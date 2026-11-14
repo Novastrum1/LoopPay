@@ -59,13 +59,19 @@ header {
   font-size: 27px;
   letter-spacing: -1px;
 }
-.brand svg {
-  width: 32px;
-  height: 32px;
+.brand-logo {
+  flex-shrink: 0;
+  overflow: hidden;
+  border-radius: 8px;
+  background: #121112;
 }
-.brand-dot {
-  font-size: 12px;
-  color: #d4a252;
+.brand-image {
+  display: block;
+  width: 190px;
+  height: auto;
+}
+footer .brand-image {
+  width: 150px;
 }
 header nav {
   display: flex;

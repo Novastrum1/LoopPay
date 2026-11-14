@@ -1,12 +1,19 @@
 import Link from "next/link";
-import { ArrowUpRight, Flower2 } from "lucide-react";
+import { ArrowUpRight } from "lucide-react";
+import Image from "next/image";
 import { WalletButton } from "./wallet";
 export function Header() {
   return (
     <header>
-      <Link href="/" className="brand">
-        <Flower2 aria-hidden="true" />
-        LoopPay<span className="brand-dot">●</span>
+      <Link href="/" className="brand brand-logo" aria-label="LoopPay home">
+        <Image
+          src="/brand/looppay-logo.webp"
+          width={840}
+          height={201}
+          alt="LoopPay"
+          className="brand-image"
+          priority
+        />
       </Link>
       <nav aria-label="Main navigation">
         <Link href="/merchant">For merchants</Link>
@@ -38,7 +45,15 @@ export function MerchantNav() {
 export function Footer() {
   return (
     <footer>
-      <span className="brand">LoopPay</span>
+      <Link href="/" className="brand brand-logo" aria-label="LoopPay home">
+        <Image
+          src="/brand/looppay-logo.webp"
+          width={840}
+          height={201}
+          alt="LoopPay"
+          className="brand-image"
+        />
+      </Link>
       <p>Good business comes around.</p>
       <Link href="/docs">Product, rewards & safety ↗</Link>
       <span>Built on QIE · No protocol fees in v1</span>
