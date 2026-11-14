@@ -1,0 +1,94 @@
+generator client {
+ provider = "prisma-client-js"
+}
+datasource db {
+ provider = "postgresql"
+ url = env("DATABASE_URL")
+}
+model Checkpoint {
+ id String @id
+ block BigInt
+ hash String
+}
+model Event {
+ id String @id
+ chainId Int
+ address String
+ name String
+ block BigInt
+ blockHash String
+ transactionHash String
+ logIndex Int
+ args Json
+ @@index([name, block])
+}
+model Merchant {
+ id String @id
+ owner String
+ payout String
+ metadata String
+ transactionHash String
+}
+model Invoice {
+ id String @id
+ merchantId String
+ token String
+ amount String
+ orderReferenceHash String
+ expiresAt String
+ campaignId String
+ status String
+ transactionHash String
+ @@index([merchantId])
+}
+model Payment {
+ id String @id
+ merchantId String
+ customer String
+ token String
+ amount String
+ payout String
+ transactionHash String
+ block BigInt
+ @@index([merchantId,customer])
+}
+model Campaign {
+ id String @id
+ merchantId String
+ token String
+ bps String
+ minPurchase String
+ cap String
+ start String
+ end String
+ active Boolean
+ funded String @default("0")
+ earned String @default("0")
+ redeemed String @default("0")
+ transactionHash String
+ @@index([merchantId])
+}
+model Earning {
+ id String @id
+ campaignId String
+ invoiceId String
+ customer String
+ amount String
+ transactionHash String
+ @@index([customer])
+}
+model Partner {
+ id String @id
+ optedIn Boolean
+ transactionHash String
+}
+model Redemption {
+ id String @id
+ campaignId String
+ merchantId String
+ customer String
+ amount String
+ redemptionId String
+ transactionHash String
+ @@index([customer])
+}
