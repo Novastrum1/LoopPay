@@ -144,3 +144,49 @@ The [QIE developer page](https://www.qie.digital/blockchain-for-developers) says
 Track consented merchant activations (profile + funded campaign + first settled invoice), weekly active merchants, actual stablecoin payment count/volume by token, unique and repeat public payer addresses, 7/30-day returning-payer cohorts, funded/reserved/redeemed rewards, cross-merchant redemptions, and median invoice-to-confirmation time. A wallet is not a unique human; label this limitation. Exclude team wallets, self-payments, mock tokens and synthetic data. Publish weekly aggregates with deployment and block range. Days 1–30: validate checkout with a small merchant cohort; 31–60: measure repeat use and partner redemption; 61–90: assess retention and funded reward sustainability. No invented traction or commitments.
 
 MIT licensed. Public addresses and on-chain activity only; no wallet secrets, customer names, order contents or private wallet data are collected.
+
+## Redesigned web app
+
+Run `npm run build` from `looppay/`; the existing pnpm workspace, routes, SDK, ABI and contracts are retained. Public values are baked in at build time: rebuild Vercel after changes. Never commit `.env` or `.env.local`. Never place secrets in `NEXT_PUBLIC_*`.
+
+Missing/invalid public configuration or absent contract bytecode enables labelled browser Demo mode. RPC outages show an unavailable state instead of fabricated live results. `/pay/demo` always opens an isolated example. Globe cities, merchant examples, and ticker activity are always Demo data. Demo invoices/campaigns use localStorage, have no monetary value, and links only work in the browser where created. Clear storage to reset. Demo rewards reset on reload and are independent of simulated checkout earnings.
+
+Live balances and writes use the existing SDK. Campaign discovery, history, partner metadata, and analytics require PostgreSQL and the running existing indexer. Missing metadata shows unpublished states. V1 supports percentage campaigns only; fixed-amount rewards need a future contract feature. Creating a campaign, approving spend, and depositing its reserve are separate transactions. Reserves start at zero and cannot be withdrawn in v1. No protocol fees in v1; network gas applies.
+
+### Environment reference
+
+| Variable | Purpose |
+| --- | --- |
+| `DATABASE_URL` | Server/indexer PostgreSQL connection (secret). |
+| `LOCAL_RPC_URL` | Local deployment script RPC. |
+| `NEXT_PUBLIC_CHAIN_ID` | EVM chain ID: use verified deployment network. |
+| `NEXT_PUBLIC_RPC_URL` | Public browser RPC; never include secret credentials. |
+| `NEXT_PUBLIC_EXPLORER_URL` | Optional public explorer origin. |
+| `NEXT_PUBLIC_APP_URL` | Public app origin for share links; browser origin is the fallback. |
+| `APP_URL` | Existing server/operator application origin. |
+| `NEXT_PUBLIC_REGISTRY_ADDRESS` | Existing deployed registry address. |
+| `NEXT_PUBLIC_CHECKOUT_ADDRESS` | Existing deployed checkout address. |
+| `NEXT_PUBLIC_REWARDS_ADDRESS` | Existing deployed rewards address. |
+| `NEXT_PUBLIC_STABLECOIN_ADDRESS` | Registry-approved exact-transfer stablecoin address. |
+| `NEXT_PUBLIC_TOKEN_SYMBOL` | Actual stablecoin display symbol. |
+| `NEXT_PUBLIC_TOKEN_DECIMALS` | Actual stablecoin decimals. |
+| `STABLECOIN_ADDRESS` | Deployment script token address. |
+| `DEPLOYER_ADDRESS` | Public deployer address. |
+| `DEPLOYER_ACCOUNT` | Encrypted Foundry keystore account name, never a private key. |
+| `QIE_TESTNET_RPC_URL` | Testnet deployment and verification RPC. |
+| `QIE_RPC_URL` | Optional indexer RPC override. |
+| `QIE_MAINNET_RPC_URL` | Reserved operator mainnet RPC. |
+| `QIE_MAINNET_CHAIN_ID` | Reserved operator mainnet chain ID. |
+| `QIE_MAINNET_STABLECOIN_ADDRESS` | Reserved operator mainnet token. |
+| `QIE_TESTNET_VERIFIER_URL` | Verifier endpoint; confirm compatibility before use. |
+| `QIE_VERIFICATION_WORKFLOW_CONFIRMED` | Explicit opt-in to the existing verification script. |
+| `VERIFY_CONTRACT_ADDRESS` | Address for verification. |
+| `VERIFY_CONTRACT_NAME` | Fully qualified contract name for verification. |
+| `VERIFY_CONSTRUCTOR_ARGS` | ABI-encoded constructor arguments. |
+| `DEPLOYMENT_BLOCK` | First registry deployment block; fresh database per network/deployment. |
+| `INDEXER_CONFIRMATIONS` | Indexer confirmation depth. |
+| `DEMO_MODE` | Existing local-only synthetic analytics flag; separate from browser demo. |
+| `LOOPPAY_E2E_CHAIN` | Test-only switch for existing local-chain integration tests. |
+| `NODE_ENV` | Framework-managed; setup badge is development-only. |
+
+To go live, supply verified QIE deployment addresses, approved token identity/decimals, public RPC/explorer, deployment block, database and running indexer. Supply real merchant metadata (name, area, category), campaign examples and contact address. Contact currently uses the repository issue form. No audit or partnership is claimed.
