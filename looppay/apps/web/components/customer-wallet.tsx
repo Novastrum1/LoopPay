@@ -7,6 +7,7 @@ import { useLoopPay, useTransaction } from "../lib/use-looppay";
 import { NetworkNotice, TransactionState } from "./transaction";
 import { Button } from "./ui/button";
 import { useDemo } from "./demo";
+import { parseMetadata } from "../lib/forms";
 type Activity = {
   earnings: { campaignId: string; amount: string; name?: string }[];
   partners: {
@@ -48,12 +49,7 @@ export function CustomerWallet() {
         ids.map(async (id) => {
           const campaign = await sdk!.getCampaign(BigInt(id));
           const merchant = await sdk!.getMerchant(campaign[0]);
-          let name = "LoopPay shop";
-          try {
-            name = JSON.parse(merchant[2]).name || name;
-          } catch {
-            /* Missing demo storage or merchant metadata uses the visible fallback. */
-          }
+          const name = parseMetadata(merchant[2]).name ?? "LoopPay shop";
           return {
             id,
             name,
@@ -92,11 +88,23 @@ export function CustomerWallet() {
     : (activity.data?.partners ?? []);
   const selected = rewards.find((r) => r.id === (source || rewards[0]?.id));
   const recipient = partners.find((p) => p.id === shop);
+  const knownBalance =
+    demo ||
+    (!!account.address &&
+      activity.isSuccess &&
+      (ids.length === 0 || balances.isSuccess));
   const total = rewards.reduce((v, r) => v + r.balance, 0n);
   function validate() {
     if (!selected || !recipient)
       throw Error("Choose where your rewards were earned and a partner shop.");
-    const value = tokenAmount(amount, decimals);
+    let value: bigint;
+    try {
+      value = tokenAmount(amount, decimals);
+    } catch {
+      throw Error(
+        `Enter an amount greater than zero, with up to ${decimals} decimal places.`,
+      );
+    }
     if (value > selected.balance)
       throw Error(
         `You have ${formatUnits(selected.balance, decimals)} ${symbol} from this shop. Enter a smaller amount.`,
@@ -146,7 +154,7 @@ export function CustomerWallet() {
           <span className="coin" aria-hidden="true">
             L
           </span>
-          {!demo && !account.address ? "—" : formatUnits(total, decimals)}
+          {!knownBalance ? "—" : formatUnits(total, decimals)}
         </div>
         <p>{symbol} · Rewards are for spending at partner shops.</p>
       </section>
@@ -175,7 +183,11 @@ export function CustomerWallet() {
             </ul>
           ) : (
             <p className="empty">
-              Pay at a LoopPay shop to earn your first reward
+              {!demo && (activity.error || balances.error)
+                ? "Your reward sources are unavailable. Check your connection and try again."
+                : !demo && !account.address
+                  ? "Connect your wallet to see where you earned rewards."
+                  : "Pay at a LoopPay shop to earn your first reward"}
             </p>
           )}
         </section>

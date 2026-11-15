@@ -1,16 +1,10 @@
 "use client";
-import { createContext, useContext, type ReactNode } from "react";
+import { type ReactNode } from "react";
+import { DemoContext, DeploymentContext } from "./demo-context";
+export { useDemo, useDeploymentReady } from "./demo-context";
 import { usePublicClient } from "wagmi";
 import { useQuery } from "@tanstack/react-query";
 import { configuredNetwork } from "../lib/network";
-const DemoContext = createContext(false);
-const DeploymentContext = createContext(false);
-export function useDeploymentReady() {
-  return useContext(DeploymentContext);
-}
-export function useDemo() {
-  return useContext(DemoContext);
-}
 export function DemoProvider({ children }: { children: ReactNode }) {
   const network = configuredNetwork();
   const client = usePublicClient();
@@ -48,11 +42,17 @@ export function DemoProvider({ children }: { children: ReactNode }) {
             payments are made.
           </div>
         ) : check.error ? (
-          <div className="notice" role="status">
+          <div className="demo-banner" role="status">
             The payment network is unavailable. Check your connection and try
             again.
           </div>
-        ) : null}
+        ) : (
+          <div className="demo-banner" role="status">
+            {check.data === true
+              ? "Connected to the configured payment network."
+              : "Checking the payment network…"}
+          </div>
+        )}
         {children}
       </DeploymentContext.Provider>
     </DemoContext.Provider>

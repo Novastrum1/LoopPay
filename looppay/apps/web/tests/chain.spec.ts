@@ -110,7 +110,7 @@ test("connected merchant creates QR invoice; customer approves, pays and receive
     ).toBeVisible();
   }
   await page.goto("/merchant/invoices/new");
-  await page.getByLabel("Fiat display label").fill("USD · Browser order");
+  await page.getByLabel("Short description").fill("USD · Browser order");
   await page.getByLabel("Amount (TESTUSD)", { exact: true }).fill("3");
   await page.getByLabel("Order reference").fill(`browser-${Date.now()}`);
   const expiry = new Date(Date.now() + 3600000).toISOString().slice(0, 16);
@@ -135,6 +135,9 @@ test("connected merchant creates QR invoice; customer approves, pays and receive
   ).toBeEnabled({ timeout: 30000 });
   await customer
     .getByRole("button", { name: "Pay invoice", exact: true })
+    .click();
+  await customer
+    .getByRole("button", { name: "Confirm payment", exact: true })
     .click();
   await expect(customer).toHaveURL(/\/receipt\//, { timeout: 30000 });
   await expect(

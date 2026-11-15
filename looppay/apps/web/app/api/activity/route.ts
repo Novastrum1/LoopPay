@@ -76,7 +76,7 @@ export async function GET(request: Request) {
       redemptions,
       partners: merchants.map((m) => ({
         id: m.id,
-        name: parseMetadata(m.metadata).name ?? `Shop #${m.id}`,
+        name: parseMetadata(m.metadata).name ?? "Shop name not published",
         location: parseMetadata(m.metadata).location,
         category: parseMetadata(m.metadata).category,
       })),

@@ -1,3 +1,8 @@
+export const metadata = {
+  title: "How it works",
+  description:
+    "Stablecoin checkout and shared rewards for local businesses on QIE. Review payments, campaigns, and partner rewards with LoopPay.",
+};
 export default function Docs() {
   return (
     <article className="workspace prose">
@@ -54,8 +59,10 @@ export default function Docs() {
       </p>
       <h2>Development and demo data</h2>
       <p>
-        Local Anvil and QIE testnet activity has no monetary value. Synthetic
-        demo data is disabled by default and clearly labeled when enabled.
+        Local Anvil and QIE testnet activity has no monetary value. Missing
+        payment configuration enables clearly labelled browser demo mode. Demo
+        invoices and campaigns stay in the browser where they were created.
+        Globe cities, shops, and reward events are illustrative demo data.
         Deployment addresses, token identity, explorer and RPC are supplied by
         the operator from official QIE documentation. Never send real funds to a
         test invoice.
