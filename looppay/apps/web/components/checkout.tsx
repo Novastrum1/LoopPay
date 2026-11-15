@@ -1,4 +1,6 @@
 "use client";
+import { useDemo } from "./demo";
+import { DemoCheckout } from "./demo-checkout";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
@@ -21,6 +23,8 @@ export function Checkout({
 }) {
   const { sdk, network, account, ready } = useLoopPay();
   const tx = useTransaction();
+  const demo = useDemo();
+  const [review, setReview] = useState(false);
   const router = useRouter();
   const [approval, setApproval] = useState(false);
   const valid = /^[1-9]\d*$/.test(invoiceId);
@@ -134,6 +138,8 @@ export function Checkout({
   const expired = !!i && BigInt(Math.floor(Date.now() / 1000)) >= i[5];
   const c = campaign.data;
   const needsApproval = !!i && (allowance.data ?? 0n) < i[3];
+  if (demo || invoiceId.startsWith("demo"))
+    return <DemoCheckout id={invoiceId} />;
   return (
     <div className="checkout">
       <span className="eyebrow">
@@ -243,7 +249,10 @@ export function Checkout({
                   !tokenSupported.data ||
                   allowance.isLoading
                 }
-                onClick={pay}
+                onClick={() => {
+                  if (needsApproval) void pay();
+                  else setReview(true);
+                }}
               >
                 {tx.busy
                   ? "Waiting for confirmation…"
@@ -251,6 +260,39 @@ export function Checkout({
                     ? "Approve stablecoin"
                     : "Pay invoice"}
               </Button>
+              {review && !needsApproval ? (
+                <div className="notice">
+                  <h3>Confirm payment</h3>
+                  <p>
+                    {profile.name ?? "LoopPay shop"} ·{" "}
+                    {formatUnits(i[3], network.tokenDecimals)}{" "}
+                    {network.tokenSymbol}
+                    <br />
+                    Network:{" "}
+                    {network.chainId === 1983
+                      ? "QIE Testnet"
+                      : network.chainId === 31337
+                        ? "Local Anvil"
+                        : "QIE"}
+                  </p>
+                  <p>
+                    Payments to shops are final and cannot be reversed. Network
+                    gas fees apply.
+                  </p>
+                  <Button
+                    disabled={!ready || tx.busy}
+                    onClick={() => {
+                      setReview(false);
+                      void pay();
+                    }}
+                  >
+                    Confirm payment
+                  </Button>
+                  <Button variant="outline" onClick={() => setReview(false)}>
+                    Go back
+                  </Button>
+                </div>
+              ) : null}
               {tokenSupported.data === false ? (
                 <div className="notice error">
                   This token is not the configured approved stablecoin. Payment

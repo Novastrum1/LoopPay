@@ -1,4 +1,6 @@
 "use client";
+import { useDemo } from "./demo";
+import { DemoMerchant } from "./demo-merchant";
 import { useState, type FormEvent } from "react";
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
@@ -75,10 +77,23 @@ export function MerchantPage({
   const profileLoading =
     ready && merchant.data === undefined && !merchant.error;
   const tx = useTransaction();
+  const demo = useDemo();
+  const [review, setReview] = useState<Record<
+    string,
+    FormDataEntryValue
+  > | null>(null);
+  const [reviewed, setReviewed] = useState(false);
   const [error, setError] = useState("");
   const [created, setCreated] = useState("");
   const [campaignId, setCampaignId] = useState("");
   const [qr, setQr] = useState("");
+  const invoiceStatus = useQuery({
+    queryKey: ["created-invoice-status", created],
+    enabled: !!sdk && view === "invoice" && !!created,
+    queryFn: () =>
+      sdk!.getInvoice(BigInt(new URL(created).pathname.split("/").pop()!)),
+    refetchInterval: 5000,
+  });
   const [profileEdit, setProfileEdit] = useState(false);
   const analytics = useQuery({
     queryKey: ["analytics", merchant.data?.id.toString()],
@@ -121,10 +136,10 @@ export function MerchantPage({
       }),
   });
   const titles = {
-    overview: "Your neighborhood. Your business.",
-    invoice: "Make the next sale a little simpler.",
+    overview: "Your merchant space.",
+    invoice: "Create an invoice.",
     campaigns: "Give them a reason to return.",
-    "campaign-new": "Start something worth coming back for.",
+    "campaign-new": "Set up a reward campaign.",
     partners: "Good neighbors make a great Loop.",
     analytics: "See the good going around.",
   };
@@ -135,6 +150,19 @@ export function MerchantPage({
     if (!sdk || !network || !ready) return;
     try {
       const values = formValues(e.currentTarget);
+      if (view === "campaign-new")
+        values.bps = String(Math.round(Number(values.percentage) * 100));
+      if (
+        view === "campaign-new" &&
+        merchant.data?.id &&
+        !profileEdit &&
+        !reviewed
+      ) {
+        campaignSchema.parse(values);
+        setReview(values);
+        return;
+      }
+      setReviewed(false);
       if (!merchant.data?.id || profileEdit) {
         const v = merchantSchema.parse(values);
         await tx.run(
@@ -152,7 +180,9 @@ export function MerchantPage({
         );
       } else if (view === "invoice") {
         const v = invoiceSchema.parse(values);
-        const appUrl = new URL(process.env.NEXT_PUBLIC_APP_URL || " ");
+        const appUrl = new URL(
+          process.env.NEXT_PUBLIC_APP_URL || window.location.origin,
+        );
         const input = {
           merchantId: merchant.data.id,
           token: network.token,
@@ -229,6 +259,7 @@ export function MerchantPage({
   const profile = merchant.data?.record
     ? parseMetadata(merchant.data.record[2])
     : undefined;
+  if (demo) return <DemoMerchant view={view} />;
   return (
     <div className="workspace">
       <MerchantNav />
@@ -240,7 +271,7 @@ export function MerchantPage({
       ) : null}
       {merchant.error ? (
         <div className="notice error">
-          Unable to read your profile. Check the RPC connection.
+          We couldn’t load your shop. Check your connection and try again.
         </div>
       ) : null}
       {profileLoading ? null : !merchant.data?.id || profileEdit ? (
@@ -353,7 +384,7 @@ export function MerchantPage({
                 <div className="grid-two">
                   <Field
                     name="label"
-                    label="Fiat display label"
+                    label="Short description"
                     placeholder="USD · Lunch for two"
                     required
                   />
@@ -387,7 +418,13 @@ export function MerchantPage({
               </form>
               {created ? (
                 <div className="notice success">
-                  <p>Invoice confirmed. Share this public checkout URL.</p>
+                  <p role="status" aria-live="polite">
+                    {invoiceStatus.data?.[7] === 1
+                      ? "Paid on-chain. Verify the receipt before delivering goods."
+                      : invoiceStatus.error
+                        ? "Payment status unavailable. Open the checkout link to check again."
+                        : "Waiting for payment. Share this public checkout URL."}
+                  </p>
                   <a className="link-break" href={created}>
                     {created}
                   </a>
@@ -413,21 +450,28 @@ export function MerchantPage({
           ) : null}
           {view === "campaign-new" ? (
             <section className="panel">
-              <h2>Choose your reward economics.</h2>
+              <h2>Choose your reward offer.</h2>
               <p className="small">
-                1 reward unit equals 1 token base unit. A 500 basis point rate
-                earns 5%. Funding is a separate confirmed transaction. No funds
-                can be withdrawn in v1.
+                Give a percentage of each eligible purchase back as rewards.
+                Funding is a separate confirmed transaction. Reserve funds
+                cannot be withdrawn in v1.
               </p>
-              <form onSubmit={submit}>
+              <form
+                onSubmit={submit}
+                onChange={() => {
+                  setReviewed(false);
+                  setReview(null);
+                }}
+              >
                 <div className="grid-two">
                   <Field
-                    name="bps"
-                    label="Reward rate (basis points)"
+                    name="percentage"
+                    label="Reward percentage"
                     type="number"
-                    min="1"
-                    max="10000"
-                    defaultValue="500"
+                    min="0.01"
+                    max="100"
+                    step="0.01"
+                    defaultValue="5"
                     required
                   />
                   <Field
@@ -462,7 +506,36 @@ export function MerchantPage({
                     required
                   />
                 </div>
-                <Button disabled={!ready || tx.busy}>Create campaign</Button>
+                {review && !reviewed ? (
+                  <div className="notice">
+                    <h3>Review your campaign</h3>
+                    <p>
+                      You will give {Number(review.bps) / 100}% back to
+                      customers. Your reserve starts at 0. Your planned funding
+                      is {String(review.budget)} {network?.tokenSymbol}.
+                    </p>
+                    <p>
+                      {String(review.start).replace("T", " ")} to{" "}
+                      {String(review.end).replace("T", " ")} · Browser timezone.
+                    </p>
+                    <p>
+                      After creation, approve and deposit the reserve below.
+                      Reserve funds cannot be withdrawn in v1.
+                    </p>
+                    <Button
+                      type="button"
+                      onClick={() => {
+                        setReviewed(true);
+                        setReview(null);
+                      }}
+                    >
+                      I have reviewed these terms
+                    </Button>
+                  </div>
+                ) : null}
+                <Button disabled={!ready || tx.busy}>
+                  {reviewed ? "Confirm campaign in wallet" : "Review campaign"}
+                </Button>
               </form>
               {campaignId ? (
                 <div className="notice success">
