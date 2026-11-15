@@ -64,4 +64,26 @@ changed. V1 campaigns support percentage rewards. Creation, token approval and
 reserve deposit remain separate transactions; reserve withdrawals are not
 supported. No Git push or deployment was performed.
 
-The recorded Lighthouse scores above predate the Figtree/Satoshi typography update.
+The recorded Lighthouse scores above predate the Figtree/Satoshi typography and international globe updates.
+
+## International globe update
+
+The globe now uses 1,210 sampled land points from Natural Earth’s public-domain
+1:110m land polygons. The generated sample and source attribution are in
+`apps/web/lib/globe-land.ts`. No map library or runtime map request is used.
+
+A closed illustrative route connects Nigeria, Ghana, Portugal, the United Kingdom,
+the United States, Brazil, South Africa, Kenya, the UAE, India, Singapore, Japan,
+and Australia. Approximate hubs do not represent real merchants, partnerships,
+service availability, or transaction activity. Kaduna and Lagos remain labelled
+under the Nigeria hub.
+
+The illustration includes perspective, a tilted globe, a latitude/longitude grid,
+front-facing continent dots, elevated spherical arcs, and travelling pulses.
+Country labels use collision avoidance. Pause, rotation buttons, dragging, and
+arrow keys are supported. Existing reduced-motion, off-screen, hidden-tab, frame
+rate, and pixel-ratio limits are retained.
+
+For this update, the responsive journeys passed at 360px, 768px, and 1440px
+without console/page errors. Dedicated browser checks also passed for static
+reduced motion, pause, rotation buttons, and keyboard rotation.
