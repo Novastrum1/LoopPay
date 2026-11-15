@@ -3,6 +3,7 @@ node_modules/
 .env
 .env.*
 !.env.example
+!config/*.example.env
 packages/contracts/out/
 packages/contracts/cache/
 packages/contracts/broadcast/
@@ -16,3 +17,5 @@ keystore/
 .keystore/
 *.pem
 *.key
+
+.next-dev/

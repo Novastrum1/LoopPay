@@ -20,14 +20,14 @@ constitute a security audit or verification of a Vercel production deployment.
 Production build served locally with `pnpm --filter @looppay/web start --port 3005`.
 Lighthouse 13.6.0, default mobile simulation with Playwright Chromium, measured:
 
-| Metric | Result |
-| --- | --- |
-| Performance | 100 |
-| Accessibility | 100 |
-| SEO | 100 |
-| Largest contentful paint | 0.8 seconds |
-| Total blocking time | 80 milliseconds |
-| Cumulative layout shift | 0 |
+| Metric                   | Result          |
+| ------------------------ | --------------- |
+| Performance              | 100             |
+| Accessibility            | 100             |
+| SEO                      | 100             |
+| Largest contentful paint | 0.8 seconds     |
+| Total blocking time      | 80 milliseconds |
+| Cumulative layout shift  | 0               |
 
 These are homepage measurements, not scores for every app route. Results can
 vary with hosting, CPU, wallet extensions, RPC and database availability. Repeat
@@ -61,7 +61,7 @@ provided. See the README environment reference and `.env.example`.
 
 No contracts, ABI definitions, SDK methods, or environment variable names were
 changed. V1 campaigns support percentage rewards. Creation, token approval and
-reserve deposit remain separate transactions; reserve withdrawals are not
+reserve deposit remain separate transactions; this historical verification predates the new unreserved-refund controls; reserve withdrawals were not
 supported. No Git push or deployment was performed.
 
 The recorded Lighthouse scores above predate the Figtree/Satoshi typography and international globe updates.

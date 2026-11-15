@@ -30,6 +30,7 @@ model Merchant {
  transactionHash String
 }
 model Invoice {
+ isTest Boolean @default(false)
  id String @id
  merchantId String
  token String
@@ -42,6 +43,10 @@ model Invoice {
  @@index([merchantId])
 }
 model Payment {
+ isTest Boolean @default(false)
+ eligible Boolean @default(false)
+ exclusionReason String @default("unclassified")
+ rewardEarning Boolean @default(false)
  id String @id
  merchantId String
  customer String
@@ -53,6 +58,10 @@ model Payment {
  @@index([merchantId,customer])
 }
 model Campaign {
+ closed Boolean @default(false)
+ withdrawn String @default("0")
+ eligibility String @default("0")
+ selfPaymentProtection Boolean @default(true)
  id String @id
  merchantId String
  token String

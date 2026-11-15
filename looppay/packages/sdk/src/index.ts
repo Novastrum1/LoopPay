@@ -31,6 +31,7 @@ export interface InvoiceInput {
   orderReferenceHash: Hash;
   expiresAt: bigint;
   campaignId: bigint;
+  isTest?: boolean;
 }
 export interface CampaignInput {
   merchantId: bigint;
@@ -40,6 +41,8 @@ export interface CampaignInput {
   cap: bigint;
   start: bigint;
   end: bigint;
+  eligibility?: 0 | 1 | 2;
+  selfPaymentProtection?: boolean;
 }
 export class LoopPaySDK {
   constructor(
@@ -83,14 +86,19 @@ export class LoopPaySDK {
     ]);
   }
   createInvoice(i: InvoiceInput) {
-    return this.write(this.network.checkout, checkoutAbi, "createInvoice", [
-      i.merchantId,
-      i.token,
-      i.amount,
-      i.orderReferenceHash,
-      i.expiresAt,
-      i.campaignId,
-    ]);
+    return this.write(
+      this.network.checkout,
+      checkoutAbi,
+      i.isTest ? "createTestInvoice" : "createInvoice",
+      [
+        i.merchantId,
+        i.token,
+        i.amount,
+        i.orderReferenceHash,
+        i.expiresAt,
+        i.campaignId,
+      ],
+    );
   }
   payInvoice(id: bigint) {
     return this.write(this.network.checkout, checkoutAbi, "payInvoice", [id]);
@@ -101,15 +109,22 @@ export class LoopPaySDK {
     ]);
   }
   createCampaign(c: CampaignInput) {
-    return this.write(this.network.rewards, rewardsAbi, "createCampaign", [
-      c.merchantId,
-      c.token,
-      c.bps,
-      c.minPurchase,
-      c.cap,
-      c.start,
-      c.end,
-    ]);
+    return this.write(
+      this.network.rewards,
+      rewardsAbi,
+      "createCampaignWithPolicy",
+      [
+        c.merchantId,
+        c.token,
+        c.bps,
+        c.minPurchase,
+        c.cap,
+        c.start,
+        c.end,
+        c.eligibility ?? 0,
+        c.selfPaymentProtection ?? true,
+      ],
+    );
   }
   fundCampaign(id: bigint, amount: bigint) {
     return this.write(this.network.rewards, rewardsAbi, "fundCampaign", [
@@ -129,6 +144,24 @@ export class LoopPaySDK {
     return this.write(this.network.rewards, rewardsAbi, "setCampaignPaused", [
       id,
       value,
+    ]);
+  }
+  closeCampaign(id: bigint) {
+    return this.write(this.network.rewards, rewardsAbi, "closeCampaign", [id]);
+  }
+  withdrawUnreservedFunds(id: bigint, amount: bigint, recipient: Address) {
+    return this.write(
+      this.network.rewards,
+      rewardsAbi,
+      "withdrawUnreservedFunds",
+      [id, amount, recipient],
+    );
+  }
+  setRewardPolicy(id: bigint, mode: 0 | 1 | 2, protectSelfPayments = true) {
+    return this.write(this.network.rewards, rewardsAbi, "setRewardPolicy", [
+      id,
+      mode,
+      protectSelfPayments,
     ]);
   }
   redeem(id: bigint, merchant: bigint, amount: bigint, redemptionId: Hash) {
@@ -207,6 +240,17 @@ export class LoopPaySDK {
   }
 }
 export interface MerchantAnalytics {
+  grossPaymentCount?: number;
+  eligiblePaymentCount?: number;
+  rewardEarningPaymentCount?: number;
+  excludedPaymentCount?: number;
+  selfPaymentCount?: number;
+  testPaymentCount?: number;
+  grossVolume?: string;
+  eligibleVolume?: string;
+  withdrawn?: string;
+  uniquePublicWalletAddresses?: number;
+  repeatPublicWalletAddresses?: number;
   volume: string;
   paymentCount: number;
   uniqueCustomers: number;
@@ -219,3 +263,5 @@ export interface MerchantAnalytics {
   indexedThrough: string;
   demo: boolean;
 }
+export { identityProvider, DisabledIdentityProvider } from "./identity";
+export type { IdentityProvider, VerificationStatus } from "./identity";

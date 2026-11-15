@@ -37,15 +37,27 @@ export default function Docs() {
         cash. Redeem with a merchant who has opted into the Loop Network. The
         issuing campaign’s vault pays the recipient’s current payout wallet.
         Check the merchant ID carefully: redemption is irreversible. Pausing or
-        ending a campaign cannot take away credits already earned.
+        ending or permanently closing a campaign cannot take away credits
+        already earned.
       </p>
       <h2>What merchants control</h2>
       <p>
         The connected wallet owns the profile and can update the payout wallet.
         Payout changes apply to open invoices, so review the latest address
         before paying. Merchants may pause future earning or opt out of
-        accepting rewards. There is no withdrawal of campaign funds in v1, even
-        after a campaign ends: only redemption spends the reserve.
+        accepting rewards. After campaign end or permanent closure, only the
+        merchant owner can refund unused funds. Funds backing earned credits
+        stay reserved and redeemable; pausing alone does not permit a refund.
+      </p>
+      <h2>Reward eligibility</h2>
+      <p>
+        Campaigns can use open wallet mode, require QIE ID verification, or
+        disable rewards. QIE ID verification is not configured on this
+        deployment; identity-required campaigns award no credits while payment
+        remains possible. Owner and current payout self-payments are excluded by
+        default. Explicit test invoices never earn rewards. Linked wallets
+        cannot be reliably detected, and a public wallet address is not a unique
+        person.
       </p>
       <h2>Know the limits</h2>
       <p>
@@ -54,8 +66,8 @@ export default function Docs() {
         campaign funds. Only exact-transfer, non-rebasing ERC-20 tokens should
         be approved. Token issuer freezing, wallet compromise, chain
         reorganizations, malicious merchant self-purchases and merchant delivery
-        disputes remain risks. No refunds, exchange rate guarantee, cash
-        redemption, or independent security audit is provided by this MVP.
+        disputes remain risks. No purchase refunds, exchange rate guarantee,
+        cash redemption, or independent security audit is provided by this MVP.
       </p>
       <h2>Development and demo data</h2>
       <p>

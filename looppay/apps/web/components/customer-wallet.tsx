@@ -1,4 +1,5 @@
 "use client";
+import { WalletCapabilities } from "./wallet-capabilities";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { formatUnits, keccak256, toBytes } from "viem";
@@ -148,6 +149,7 @@ export function CustomerWallet() {
         Earn at one shop. Spend at another participating shop in the Loop.
       </p>
       <NetworkNotice />
+      <WalletCapabilities />
       <section className="reward-card" aria-label="Reward balance">
         <p>{demo ? "Demo reward balance" : "Your reward balance"}</p>
         <div className="reward-total">
@@ -156,7 +158,10 @@ export function CustomerWallet() {
           </span>
           {!knownBalance ? "—" : formatUnits(total, decimals)}
         </div>
-        <p>{symbol} · Rewards are for spending at partner shops.</p>
+        <p>
+          {symbol} · Non-transferable rewards are redeemable at partner shops
+          subject to campaign rules.
+        </p>
       </section>
       {activity.isLoading || balances.isLoading ? (
         <p role="status">Loading your rewards…</p>

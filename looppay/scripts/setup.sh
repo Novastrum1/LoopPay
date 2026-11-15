@@ -4,7 +4,7 @@ cd "$(dirname "$0")/.."
 corepack enable
 pnpm install --frozen-lockfile
 # Foundry binaries are pinned through the pnpm lockfile; no remote installer is piped to a shell.
-pnpm exec forge --version
+node scripts/foundry.mjs forge --version
 if [ ! -f .env ]; then cp .env.example .env; fi
 if [ ! -f apps/web/.env.local ]; then ln -s ../../.env apps/web/.env.local; fi
 pnpm db:generate

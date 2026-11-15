@@ -1,0 +1,15 @@
+# Dependency integrity and updates
+
+Use Node 24.22.2, pnpm 10.28.2, npm-distributed Foundry 1.7.1, Solidity 0.8.24, and exact workspace package versions. Both devcontainers and CI follow these pins. Run all commands from `looppay/`. Do not bypass install policies or use `latest` in setup.
+
+The former forge-std GitHub codeload URL had no integrity entry: pnpm treated it as a remote archive rather than a registry release. The repository now includes the unchanged upstream v1.9.6 archive at `packages/contracts/vendor/forge-std-1.9.6.tgz`. Its source is https://codeload.github.com/foundry-rs/forge-std/tar.gz/refs/tags/v1.9.6. Upstream MIT and Apache licenses are included inside the archive. SHA-256: `53d2b498183cb7dc62cf726cc6c1a222ad728b0d87976a877ca1f3ed3707b1c6`. The local file dependency produces a SHA-512 integrity entry in pnpm-lock.yaml and uses the same Foundry remapping. GitHub archives can change packaging bytes; review source and provenance before replacing this checked-in artifact.
+
+The pending manifest pins were retained rather than broadly upgrading the workspace. PostCSS satisfying `^8.5.3` is explicitly overridden to established 8.5.6 to avoid selecting a newly published transitive release rejected by release-age policy. This is a reproducibility choice, not a claim that every dependency is free of vulnerabilities. Review advisories and compatibility before any release. Do not remove a release-age requirement to force an install.
+
+After an intentional manifest change run `pnpm install --no-frozen-lockfile`, inspect both manifest and lockfile diff, verify archive provenance and hashes, then run `pnpm install --frozen-lockfile`, generation, lint, types, tests, coverage, ABI consistency, build and Playwright. Normal development and CI use frozen installation. Allowed build scripts are listed in pnpm-workspace.yaml; do not grant blanket script execution. Existing wagmi transitive peer/deprecation warnings require review before mainnet; do not resolve them with an unreviewed framework migration.
+
+CI status is [LoopPay checks](https://github.com/Novastrum1/LoopPay/actions/workflows/ci.yml). The required branch-protection check should be `verify`. A local successful run does not establish a successful remote check: push the reviewed changes, ensure Actions is enabled and verify the exact commit's run. Fork workflows may require repository-owner approval. Vercel success does not substitute for Actions.
+
+The pinned Foundry npm 1.7.1 JavaScript launcher does not forward its child exit code. Repository commands use scripts/foundry.mjs to resolve the same locked native binary and propagate its real exit status. Tests, coverage, deployment chain checks and verification use that path. Use `pnpm contracts:coverage` instead of the upstream wrapper for release evidence. A deliberate invalid-command regression test checks nonzero failure propagation. No dependency version change is needed for this correction.
+
+The vendored archive was compared byte-for-byte by SHA-256 against a fresh download of the official upstream v1.9.6 archive on 2026-11-15; both matched the digest above.

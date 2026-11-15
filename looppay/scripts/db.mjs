@@ -1,7 +1,11 @@
 import { spawnSync } from "node:child_process";
 import { loadEnvFile } from "node:process";
 try {
-  loadEnvFile(".env");
+  try {
+    loadEnvFile(".env.local");
+  } catch {
+    loadEnvFile(".env");
+  }
 } catch {
   /* CI may supply environment directly. */
 }

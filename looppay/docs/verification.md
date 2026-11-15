@@ -38,3 +38,8 @@ The browser suites own isolated ports 3001/3002 and set their own app URL. Run t
 QIE testnet deployment and source verification require operator-supplied RPC configuration and an encrypted test signer reference. Mainnet requires official stablecoin address/decimals confirmation and every manual release gate. The included verification adapter remains disabled until QIE confirms its Blockscout workflow and endpoint. Actual desktop/mobile QIE Wallet behavior, deployment source verification, independent security review, real-token issuer semantics and operational monitoring are pending. No mainnet release command is supplied before these prerequisites pass.
 
 Dependency installation reports optional wallet-connector transitive deprecations and a React peer warning in an unused connector subtree. The web imports the injected connector from wagmi core rather than bundling that subtree. Run dependency review again before a production release.
+
+
+## 2026-11-15 readiness revision
+
+See [implementation report](implementation-report.md) for the current changes, complete file list, final test results and unresolved external release gates. The revised local suite passed frozen installation, migrations/generation, lint/types, 22 Vitest tests, 66 Foundry executions with fuzzing, coverage, stable ABI generation, production build, PostgreSQL projections, extended SDK close/refund redemption, and 8 Playwright tests without skips. A production API probe confirmed local canonical readiness with 12-block lag and withdrawal-aware indexed analytics. This is local evidence only; no QIE deployment, source verification, real-device certification, external audit or real traction is claimed.

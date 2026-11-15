@@ -6,9 +6,10 @@ import {
   parseAbi,
   keccak256,
   toBytes,
+  decodeEventLog,
 } from "viem";
 import { loadNetwork, chainFor } from "@looppay/config";
-import { LoopPaySDK } from "../src";
+import { LoopPaySDK, rewardsAbi } from "../src";
 const n = loadNetwork(process.env);
 assert.equal(n.chainId, 31337, "Local integration only");
 const chain = chainFor(n);
@@ -67,22 +68,60 @@ await confirmed(
 );
 const mid = await merchant.getMerchantId(accounts[0]);
 const now = BigInt(Math.floor(Date.now() / 1000));
-await confirmed(
+const created = await confirmed(
+  merchant.createCampaign({
+    merchantId: mid,
+    token: n.token,
+    bps: 500n,
+    minPurchase: 0n,
+    cap: 10_000000n,
+    start: now,
+    end: now + 86400n,
+  }),
+);
+let campaignId = 0n;
+for (const log of created.logs) {
+  if (log.address.toLowerCase() !== n.rewards.toLowerCase()) continue;
+  try {
+    const e = decodeEventLog({
+      abi: rewardsAbi,
+      data: log.data,
+      topics: log.topics,
+    });
+    if (e.eventName === "CampaignCreated") campaignId = e.args.campaignId;
+  } catch {
+    /* other event */
+  }
+}
+assert(campaignId > 0n, "Campaign creation receipt");
+await confirmed(merchant.approve(n.token, n.rewards, 100_000000n));
+await confirmed(merchant.fundCampaign(campaignId, 100_000000n));
+const invoiceReceipt = await confirmed(
   merchant.createInvoice({
     merchantId: mid,
     token: n.token,
     amount: 20_000000n,
     orderReferenceHash: keccak256(toBytes(crypto.randomUUID())),
     expiresAt: now + 3600n,
-    campaignId: 1n,
+    campaignId,
   }),
 );
 const { checkoutAbi } = await import("../src");
-const id = await publicClient.readContract({
-  address: n.checkout,
-  abi: checkoutAbi,
-  functionName: "invoiceCount",
-});
+let id = 0n;
+for (const log of invoiceReceipt.logs) {
+  if (log.address.toLowerCase() !== n.checkout.toLowerCase()) continue;
+  try {
+    const e = decodeEventLog({
+      abi: checkoutAbi,
+      data: log.data,
+      topics: log.topics,
+    });
+    if (e.eventName === "InvoiceCreated") id = e.args.invoiceId;
+  } catch {
+    /* other event */
+  }
+}
+assert(id > 0n, "Invoice creation receipt");
 const before = await publicClient.readContract({
   address: n.token,
   abi: mock,
@@ -90,7 +129,7 @@ const before = await publicClient.readContract({
   args: [accounts[0]],
 });
 await confirmed(customer.approve(n.token, n.checkout, 20_000000n));
-const rewardBefore = await customer.getBalance(1n, accounts[2]);
+const rewardBefore = await customer.getBalance(campaignId, accounts[2]);
 await confirmed(customer.payInvoice(id));
 const after = await publicClient.readContract({
   address: n.token,
@@ -100,25 +139,25 @@ const after = await publicClient.readContract({
 });
 assert.equal(after - before, 20_000000n, "Direct settlement");
 assert.equal(
-  await customer.getBalance(1n, accounts[2]),
+  await customer.getBalance(campaignId, accounts[2]),
   rewardBefore + 1_000000n,
   "5% earned",
 );
-await confirmed(merchant.pauseCampaign(1n, true));
+await confirmed(merchant.pauseCampaign(campaignId, true));
 await confirmed(
   customer.redeem(
-    1n,
+    campaignId,
     partnerId,
     500000n,
     keccak256(toBytes(crypto.randomUUID())),
   ),
 );
 assert.equal(
-  await customer.getBalance(1n, accounts[2]),
+  await customer.getBalance(campaignId, accounts[2]),
   rewardBefore + 500000n,
   "Paused campaign preserves redemption",
 );
-await confirmed(merchant.pauseCampaign(1n, false));
+await confirmed(merchant.pauseCampaign(campaignId, false));
 const balance = await publicClient.readContract({
   address: n.token,
   abi: mock,
@@ -126,6 +165,32 @@ const balance = await publicClient.readContract({
   args: [n.checkout],
 });
 assert.equal(balance, 0n, "No Checkout custody");
+const beforeClose = await merchant.getCampaign(campaignId);
+await confirmed(merchant.closeCampaign(campaignId));
+const unreserved = beforeClose[5] - beforeClose[6];
+await confirmed(
+  merchant.withdrawUnreservedFunds(campaignId, unreserved, accounts[0]),
+);
+const afterRefund = await merchant.getCampaign(campaignId);
+assert.equal(
+  afterRefund[5],
+  afterRefund[6],
+  "Refund keeps all liabilities reserved",
+);
+const remaining = await customer.getBalance(campaignId, accounts[2]);
+await confirmed(
+  customer.redeem(
+    campaignId,
+    partnerId,
+    remaining,
+    keccak256(toBytes(crypto.randomUUID())),
+  ),
+);
+assert.equal(
+  (await merchant.getCampaign(campaignId))[5],
+  0n,
+  "Post-close redemption clears campaign budget",
+);
 console.info(
-  `PASS: direct payment, 5% reward, campaign pause, cross-merchant redemption, zero Checkout balance. Receipt invoice ${id}.`,
+  `PASS: direct payment, 5% reward, campaign pause, cross-merchant redemption, zero Checkout balance, permanent close, unreserved refund and post-close redemption. Receipt invoice ${id}.`,
 );

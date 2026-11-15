@@ -8,7 +8,7 @@ import {LoopPayRegistry} from "./LoopPayRegistry.sol";
 import {ILoopPayRewards} from "./interfaces/ILoopPayRewards.sol";
 
 /// @title Fully reserved, non-transferable loyalty accounting for the Loop Network.
-/// @dev No withdrawals: pausing earning never confiscates balances. All amounts use token base units.
+/// @dev Only unused budget is refundable after end or permanent closure. Earned credits never expire.
 contract LoopPayRewards is ReentrancyGuard, ILoopPayRewards {
     using SafeERC20 for IERC20;
 
@@ -24,6 +24,27 @@ contract LoopPayRewards is ReentrancyGuard, ILoopPayRewards {
         uint64 end;
         bool active;
     }
+    enum Lifecycle {
+        Draft,
+        Active,
+        Paused,
+        Ended,
+        Closed
+    }
+    enum Eligibility {
+        Open,
+        QieIdVerified,
+        Disabled
+    }
+    mapping(uint256 => bool) public closed;
+    mapping(uint256 => Eligibility) public eligibility;
+    mapping(uint256 => bool) public selfPaymentProtection;
+    event CampaignClosed(uint256 indexed campaignId);
+    event UnreservedFundsWithdrawn(uint256 indexed campaignId, address indexed recipient, uint256 amount);
+    event RewardPolicyChanged(uint256 indexed campaignId, Eligibility eligibility, bool selfPaymentProtection);
+    error CampaignStillEarning();
+    error CampaignIsClosed();
+    error InsufficientUnreservedFunds();
     LoopPayRegistry public immutable registry;
     address public checkout;
     uint256 public campaignCount;
@@ -92,13 +113,32 @@ contract LoopPayRewards is ReentrancyGuard, ILoopPayRewards {
         uint256 cap,
         uint64 start,
         uint64 end
-    ) external live returns (uint256 id) {
+    ) public live returns (uint256 id) {
         registry.requireOwner(merchantId, msg.sender);
         if (!registry.approvedTokens(token)) revert UnsupportedToken();
         if (bps == 0 || bps > 10000 || cap == 0 || end <= start || end <= block.timestamp) revert InvalidCampaign();
         id = ++campaignCount;
         campaigns[id] = Campaign(merchantId, token, bps, minPurchase, cap, 0, 0, start, end, true);
+        selfPaymentProtection[id] = true;
         emit CampaignCreated(id, merchantId, token, bps, minPurchase, cap, start, end);
+    }
+
+    /// @notice Creates the policy atomically so verified/disabled campaigns never start open.
+    function createCampaignWithPolicy(
+        uint256 merchantId,
+        address token,
+        uint256 bps,
+        uint256 minPurchase,
+        uint256 cap,
+        uint64 start,
+        uint64 end,
+        Eligibility mode,
+        bool protectSelfPayments
+    ) external returns (uint256 id) {
+        id = createCampaign(merchantId, token, bps, minPurchase, cap, start, end);
+        eligibility[id] = mode;
+        selfPaymentProtection[id] = protectSelfPayments;
+        emit RewardPolicyChanged(id, mode, protectSelfPayments);
     }
 
     function validCampaign(uint256 id, uint256 merchantId, address token) external view returns (bool) {
@@ -110,6 +150,7 @@ contract LoopPayRewards is ReentrancyGuard, ILoopPayRewards {
     function fundCampaign(uint256 id, uint256 amount) external nonReentrant live {
         Campaign storage c = campaigns[id];
         registry.requireOwner(c.merchantId, msg.sender);
+        if (closed[id] || block.timestamp >= c.end) revert CampaignIsClosed();
         if (amount == 0) revert InvalidAmount();
         uint256 beforeBalance = IERC20(c.token).balanceOf(address(this));
         IERC20(c.token).safeTransferFrom(msg.sender, address(this), amount);
@@ -121,8 +162,64 @@ contract LoopPayRewards is ReentrancyGuard, ILoopPayRewards {
     function setCampaignPaused(uint256 id, bool value) external {
         Campaign storage c = campaigns[id];
         registry.requireOwner(c.merchantId, msg.sender);
+        if (closed[id] || block.timestamp >= c.end) revert CampaignIsClosed();
         c.active = !value;
         emit CampaignPaused(id, value);
+    }
+
+    /// @notice Permanently stops earning; existing customer credits remain redeemable.
+    function closeCampaign(uint256 id) external {
+        Campaign storage c = campaigns[id];
+        registry.requireOwner(c.merchantId, msg.sender);
+        if (closed[id]) revert CampaignIsClosed();
+        closed[id] = true;
+        c.active = false;
+        emit CampaignClosed(id);
+    }
+
+    function campaignState(uint256 id) external view returns (Lifecycle) {
+        Campaign storage c = campaigns[id];
+        if (c.merchantId == 0) revert InvalidCampaign();
+        if (closed[id]) return Lifecycle.Closed;
+        if (block.timestamp >= c.end) return Lifecycle.Ended;
+        if (!c.active) return Lifecycle.Paused;
+        if (block.timestamp < c.start) return Lifecycle.Draft;
+        return Lifecycle.Active;
+    }
+
+    /// @notice Owner refunds only budget not backing earned credits, after end or permanent close.
+    /// @dev Checks-effects-interactions and reentrancy guard preserve reserved <= budget.
+    /// Emergency pause does not grant operators custody or prevent merchant refunds.
+    function withdrawUnreservedFunds(uint256 id, uint256 amount, address recipient) external nonReentrant {
+        Campaign storage c = campaigns[id];
+        registry.requireOwner(c.merchantId, msg.sender);
+        if (!closed[id] && block.timestamp < c.end) revert CampaignStillEarning();
+        if (amount == 0 || recipient == address(0) || recipient == address(this)) revert InvalidAmount();
+        if (amount > c.budget - c.reserved) revert InsufficientUnreservedFunds();
+        c.budget -= amount;
+        IERC20(c.token).safeTransfer(recipient, amount);
+        emit UnreservedFundsWithdrawn(id, recipient, amount);
+    }
+
+    /// @notice Merchant chooses eligibility. Verified mode fails closed until an official adapter is reviewed.
+    function setRewardPolicy(uint256 id, Eligibility mode, bool protectSelfPayments) external {
+        Campaign storage c = campaigns[id];
+        registry.requireOwner(c.merchantId, msg.sender);
+        if (closed[id] || block.timestamp >= c.end) revert CampaignIsClosed();
+        eligibility[id] = mode;
+        selfPaymentProtection[id] = protectSelfPayments;
+        emit RewardPolicyChanged(id, mode, protectSelfPayments);
+    }
+
+    /// @return eligible Whether the wallet satisfies policy, independent of dates, cap and budget.
+    /// @return reason 0 eligible, 1 self payment, 2 identity unavailable, 3 rewards disabled.
+    function rewardEligibility(uint256 id, address customer) public view returns (bool eligible, uint8 reason) {
+        Campaign storage c = campaigns[id];
+        (address owner, address payout,) = registry.merchants(c.merchantId);
+        if (selfPaymentProtection[id] && (customer == owner || customer == payout)) return (false, 1);
+        if (eligibility[id] == Eligibility.QieIdVerified) return (false, 2);
+        if (eligibility[id] == Eligibility.Disabled) return (false, 3);
+        return (true, 0);
     }
 
     function optInToPartnerNetwork(uint256 merchantId, bool value) external live {
@@ -141,7 +238,11 @@ contract LoopPayRewards is ReentrancyGuard, ILoopPayRewards {
         invoiceEarned[invoiceId] = true;
         Campaign storage c = campaigns[id];
         if (c.merchantId != merchantId || c.token != token || id == 0) revert InvalidCampaign();
-        if (!c.active || block.timestamp < c.start || block.timestamp >= c.end || amount < c.minPurchase) return;
+        (bool eligible,) = rewardEligibility(id, customer);
+        if (
+            !eligible || closed[id] || !c.active || block.timestamp < c.start || block.timestamp >= c.end
+                || amount < c.minPurchase
+        ) return;
         uint256 reward = Math.min(
             Math.mulDiv(amount, c.bps, 10000), Math.min(c.cap - lifetimeEarned[id][customer], c.budget - c.reserved)
         );

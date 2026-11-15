@@ -4,6 +4,9 @@ export default ts.config(
   {
     ignores: [
       "**/.next/**",
+      "**/.next-dev/**",
+      "**/test-results/**",
+      "**/playwright-report/**",
       "**/node_modules/**",
       "**/out/**",
       "**/cache/**",

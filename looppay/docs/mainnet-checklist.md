@@ -16,6 +16,12 @@ Mainnet deployment is not implemented or authorized by any default script. Devel
 - [ ] Monitoring active: RPC failures, block lag, checkpoint hash mismatch, paused state, allowlist/role/payout changes, budget exhaustion, vault asset/liability reconciliation, DB backups.
 - [ ] Pause plan rehearsed on testnet: authorized PAUSER calls Registry `setPaused(true)` and checks transactional flows stop; communicate; diagnose; re-review before unpause.
 - [ ] Rollback plan documented: contracts are immutable, no proxy rollback or asset confiscation. Pause affected deployment, preserve historical receipts, publish a new reviewed version if needed. Existing vault liabilities require a customer-preserving migration plan; no admin sweep exists.
-- [ ] Publish business reward terms explaining locked funds, earned-credit permanence, token risks, no refunds and merchant delivery responsibility.
+- [ ] Publish terms explaining reserved earned credits, owner-only unused-budget refunds after end/close, token risks, no purchase chargebacks and merchant delivery responsibility.
+
+- [ ] Rehearse owner-only close/refund, excess/unauthorized/reentrant withdrawal rejection, redemption after close/end and aggregate conservation.
+- [ ] Confirm test/self/identity exclusions reconcile with indexer; exclude mock/team/testnet activity from traction.
+- [ ] Complete QIE ID official-integration checklist or retain disabled provider.
+- [ ] Validate backed-up replay, readiness alarms, dependency policy and independent security checklist.
+- [ ] Any future mainnet implementation requires QIE_RELEASE_APPROVED=true and independently checked source-verification evidence; Boolean flags alone are not evidence.
 
 Release evidence / reviewer / date / reviewed command: **PENDING — do not deploy mainnet.**

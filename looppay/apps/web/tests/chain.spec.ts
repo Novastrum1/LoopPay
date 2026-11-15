@@ -5,9 +5,11 @@ import {
   http,
   parseAbi,
   formatUnits,
+  decodeEventLog,
 } from "viem";
 import { anvil } from "viem/chains";
-import { registryAbi } from "@looppay/sdk";
+import { registryAbi, LoopPaySDK, rewardsAbi, checkoutAbi } from "@looppay/sdk";
+import { loadNetwork, chainFor } from "@looppay/config";
 import { loadEnvFile } from "node:process";
 const enabled = process.env.LOOPPAY_E2E_CHAIN === "true";
 if (enabled) loadEnvFile("../../.env");
@@ -55,7 +57,9 @@ test("connected merchant creates QR invoice; customer approves, pays and receive
   browser,
   page,
 }) => {
-  test.skip(!enabled, "Opt-in local Anvil integration; no signing keys used");
+  expect(enabled, "Chain flow requires explicit local integration mode").toBe(
+    true,
+  );
   test.setTimeout(180000);
   const rpc = process.env.NEXT_PUBLIC_RPC_URL!;
   const token = process.env.NEXT_PUBLIC_STABLECOIN_ADDRESS as `0x${string}`;
@@ -154,4 +158,150 @@ test("connected merchant creates QR invoice; customer approves, pays and receive
   });
   expect(formatUnits(balance - beforeBalance, 6)).toBe("3");
   await customerContext.close();
+});
+
+test("merchant closes campaign and refunds unreserved funds while customer keeps earned credits", async ({
+  page,
+}) => {
+  test.setTimeout(180000);
+  const n = loadNetwork(process.env);
+  expect(n.chainId).toBe(31337);
+  const chain = chainFor(n);
+  const publicClient = createPublicClient({ chain, transport: http(n.rpcUrl) });
+  const wallet = createWalletClient({ chain, transport: http(n.rpcUrl) });
+  const accounts = await wallet.getAddresses();
+  const sdkFor = (index: number) =>
+    new LoopPaySDK(
+      n,
+      publicClient,
+      createWalletClient({
+        account: accounts[index],
+        chain,
+        transport: http(n.rpcUrl),
+      }),
+    );
+  const merchant = sdkFor(6),
+    customer = sdkFor(7);
+  const confirm = async (hash: Promise<`0x${string}`>) =>
+    merchant.confirmed(await hash);
+  let merchantId = await merchant.getMerchantId(accounts[6]);
+  if (!merchantId) {
+    await confirm(
+      merchant.createMerchant(
+        accounts[6],
+        JSON.stringify({
+          name: "Refund QA shop",
+          logo: "",
+          category: "Cafe",
+          country: "Local",
+          location: "Anvil",
+          payout: accounts[6],
+          terms: "Test only non-transferable rewards.",
+        }),
+      ),
+    );
+    merchantId = await merchant.getMerchantId(accounts[6]);
+  }
+  const mint = parseAbi(["function mint(address,uint256)"]);
+  for (const index of [6, 7])
+    await publicClient.waitForTransactionReceipt({
+      hash: await wallet.writeContract({
+        account: accounts[0],
+        address: n.token,
+        abi: mint,
+        functionName: "mint",
+        args: [accounts[index], 10_000000n],
+      }),
+    });
+  const now = BigInt(Math.floor(Date.now() / 1000));
+  const receipt = await confirm(
+    merchant.createCampaign({
+      merchantId,
+      token: n.token,
+      bps: 1000n,
+      minPurchase: 0n,
+      cap: 10_000000n,
+      start: now,
+      end: now + 86400n,
+    }),
+  );
+  let campaignId = 0n;
+  for (const log of receipt.logs) {
+    try {
+      const e = decodeEventLog({
+        abi: rewardsAbi,
+        data: log.data,
+        topics: log.topics,
+      });
+      if (e.eventName === "CampaignCreated") campaignId = e.args.campaignId;
+    } catch {
+      /* other events */
+    }
+  }
+  expect(campaignId).toBeGreaterThan(0n);
+  await confirm(merchant.approve(n.token, n.rewards, 10_000000n));
+  await confirm(merchant.fundCampaign(campaignId, 10_000000n));
+  const invoiceReceipt = await confirm(
+    merchant.createInvoice({
+      merchantId,
+      token: n.token,
+      amount: 2_000000n,
+      orderReferenceHash: `0x${"0".repeat(64)}`,
+      expiresAt: now + 3600n,
+      campaignId,
+    }),
+  );
+  let invoiceId = 0n;
+  for (const log of invoiceReceipt.logs) {
+    try {
+      const e = decodeEventLog({
+        abi: checkoutAbi,
+        data: log.data,
+        topics: log.topics,
+      });
+      if (e.eventName === "InvoiceCreated") invoiceId = e.args.invoiceId;
+    } catch {
+      /* other event */
+    }
+  }
+  expect(invoiceId).toBeGreaterThan(0n);
+  await confirm(customer.approve(n.token, n.checkout, 2_000000n));
+  await confirm(customer.payInvoice(invoiceId));
+  expect(await customer.getBalance(campaignId, accounts[7])).toBe(200000n);
+  await inject(page.context(), accounts[6], n.rpcUrl);
+  await page.goto("/merchant/campaigns");
+  await page
+    .getByRole("button", { name: "Connect wallet", exact: true })
+    .click();
+  const refund = page.getByRole("region", { name: "Campaign refunds" });
+  await refund
+    .getByLabel("Campaign ID", { exact: true })
+    .fill(campaignId.toString());
+  await expect(refund.getByText(/Unreserved: 9.8 TESTUSD/)).toBeVisible();
+  await expect(
+    refund.getByRole("button", { name: "Permanently close campaign" }),
+  ).toBeDisabled();
+  await refund.getByLabel("I understand closure is permanent.").check();
+  await refund
+    .getByRole("button", { name: "Permanently close campaign" })
+    .click();
+  await expect(refund.getByText(/Status: Closed/)).toBeVisible({
+    timeout: 30000,
+  });
+  await refund.getByLabel("Refund amount (TESTUSD)").fill("10");
+  await refund
+    .getByRole("button", { name: "Review and withdraw in wallet" })
+    .click();
+  await expect(refund.getByRole("alert")).toContainText("exceeds unreserved");
+  await refund.getByLabel("Refund amount (TESTUSD)").fill("9.8");
+  await refund
+    .getByRole("button", { name: "Review and withdraw in wallet" })
+    .click();
+  await expect(refund.getByText(/Unreserved: 0 TESTUSD/)).toBeVisible({
+    timeout: 30000,
+  });
+  expect(await customer.getBalance(campaignId, accounts[7])).toBe(200000n);
+  const campaign = await merchant.getCampaign(campaignId);
+  expect(campaign[5]).toBe(200000n);
+  expect(campaign[6]).toBe(200000n);
 });

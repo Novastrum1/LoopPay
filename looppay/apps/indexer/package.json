@@ -3,14 +3,14 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "tsx --env-file=../../.env src/index.ts",
+    "dev": "tsx src/start.ts",
     "typecheck": "tsc -p tsconfig.json"
   },
   "dependencies": {
     "@prisma/client": "6.19.0",
     "prisma": "6.19.0",
-    "viem": "^2.45.0",
-    "zod": "^3.24.2",
+    "viem": "2.57.19",
+    "zod": "3.25.76",
     "@looppay/sdk": "workspace:*",
     "@looppay/config": "workspace:*"
   },

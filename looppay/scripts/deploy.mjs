@@ -1,7 +1,12 @@
+import { foundryBinary } from "./foundry.mjs";
 import { spawnSync } from "node:child_process";
 import { loadEnvFile } from "node:process";
 try {
-  loadEnvFile(".env");
+  try {
+    loadEnvFile(".env.local");
+  } catch {
+    loadEnvFile(".env");
+  }
 } catch {
   /* CI can supply environment directly. */
 }
@@ -15,7 +20,20 @@ const rpc =
 const sender = process.env.DEPLOYER_ADDRESS;
 if (!rpc || !/^0x[0-9a-fA-F]{40}$/.test(sender ?? ""))
   throw new Error("Set RPC URL and public DEPLOYER_ADDRESS");
-const cast = spawnSync("cast", ["chain-id", "--rpc-url", rpc], {
+let endpoint;
+try {
+  endpoint = new URL(rpc);
+} catch {
+  throw new Error("Set a valid public RPC URL");
+}
+if (
+  endpoint.username ||
+  endpoint.password ||
+  endpoint.search ||
+  !["http:", "https:"].includes(endpoint.protocol)
+)
+  throw new Error("Use a public RPC URL without embedded credentials");
+const cast = spawnSync(foundryBinary("cast"), ["chain-id", "--rpc-url", rpc], {
   encoding: "utf8",
 });
 if (cast.status !== 0) throw new Error("Unable to confirm RPC chain ID");
@@ -38,7 +56,7 @@ const args = [
     ? ["--unlocked"]
     : ["--account", process.env.DEPLOYER_ACCOUNT]),
 ];
-const result = spawnSync("forge", args, {
+const result = spawnSync(foundryBinary("forge"), args, {
   cwd: "packages/contracts",
   stdio: "inherit",
   env: process.env,

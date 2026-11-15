@@ -3,6 +3,6 @@
   "private": true,
   "dependencies": {
     "@openzeppelin/contracts": "5.2.0",
-    "forge-std": "https://codeload.github.com/foundry-rs/forge-std/tar.gz/refs/tags/v1.9.6"
+    "forge-std": "file:vendor/forge-std-1.9.6.tgz"
   }
 }

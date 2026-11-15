@@ -1,4 +1,5 @@
 "use client";
+import { CampaignRefund } from "./campaign-refund";
 import { useDemo } from "./demo";
 import { DemoMerchant } from "./demo-merchant";
 import { useState, type FormEvent } from "react";
@@ -116,6 +117,10 @@ export function MerchantPage({
         campaigns: {
           id: string;
           active: boolean;
+          closed: boolean;
+          end: string;
+          start: string;
+          withdrawn: string;
           funded: string;
           earned: string;
           redeemed: string;
@@ -190,6 +195,7 @@ export function MerchantPage({
           orderReferenceHash: hashOrder(v.reference),
           expiresAt: BigInt(Math.floor(Date.parse(v.expires) / 1000)),
           campaignId: BigInt(v.campaign),
+          isTest: values.isTest === "on",
         };
         await tx.run(
           () => sdk.createInvoice(input),
@@ -222,6 +228,12 @@ export function MerchantPage({
           cap: tokenAmount(v.cap, network.tokenDecimals),
           start: BigInt(Math.floor(Date.parse(v.start) / 1000)),
           end: BigInt(Math.floor(Date.parse(v.end) / 1000)),
+          eligibility: (values.eligibility === "1"
+            ? 1
+            : values.eligibility === "2"
+              ? 2
+              : 0) as 0 | 1 | 2,
+          selfPaymentProtection: values.selfPaymentProtection === "on",
         };
         await tx.run(
           () => sdk.createCampaign(input),
@@ -414,6 +426,12 @@ export function MerchantPage({
                     required
                   />
                 </div>
+                <label className="field">
+                  <span>
+                    <input name="isTest" type="checkbox" /> Test transaction: no
+                    rewards; excluded from production analytics.
+                  </span>
+                </label>
                 <Button disabled={!ready || tx.busy}>Create invoice</Button>
               </form>
               {created ? (
@@ -453,8 +471,8 @@ export function MerchantPage({
               <h2>Choose your reward offer.</h2>
               <p className="small">
                 Give a percentage of each eligible purchase back as rewards.
-                Funding is a separate confirmed transaction. Reserve funds
-                cannot be withdrawn in v1.
+                Funding is a separate confirmed transaction. Only unreserved
+                funds can be refunded after end or permanent closure.
               </p>
               <form
                 onSubmit={submit}
@@ -506,6 +524,32 @@ export function MerchantPage({
                     required
                   />
                 </div>
+                <label className="field">
+                  Reward eligibility
+                  <select name="eligibility" defaultValue="0">
+                    <option value="0">Open wallet mode</option>
+                    <option value="1">
+                      QIE ID verified (not configured; no rewards)
+                    </option>
+                    <option value="2">Rewards disabled</option>
+                  </select>
+                </label>
+                <label className="field">
+                  <span>
+                    <input
+                      name="selfPaymentProtection"
+                      type="checkbox"
+                      defaultChecked
+                    />{" "}
+                    Exclude merchant owner and current payout wallet from
+                    rewards
+                  </span>
+                </label>
+                <p className="small">
+                  Linked wallets cannot be reliably detected. QIE ID
+                  verification is not configured on this deployment. Test
+                  invoices never earn rewards.
+                </p>
                 {review && !reviewed ? (
                   <div className="notice">
                     <h3>Review your campaign</h3>
@@ -520,7 +564,8 @@ export function MerchantPage({
                     </p>
                     <p>
                       After creation, approve and deposit the reserve below.
-                      Reserve funds cannot be withdrawn in v1.
+                      Earned credits remain reserved; unused budget is
+                      refundable after end or permanent closure.
                     </p>
                     <Button
                       type="button"
@@ -592,7 +637,17 @@ export function MerchantPage({
                           <tr key={c.id}>
                             <td>
                               #{c.id} ·{" "}
-                              {c.active ? "Earning enabled" : "Paused"}
+                              {c.closed
+                                ? "Closed"
+                                : BigInt(c.end) <=
+                                    BigInt(Math.floor(Date.now() / 1000))
+                                  ? "Ended"
+                                  : !c.active
+                                    ? "Paused"
+                                    : BigInt(c.start) >
+                                        BigInt(Math.floor(Date.now() / 1000))
+                                      ? "Draft"
+                                      : "Active"}
                             </td>
                             <td>
                               {formatUnits(
@@ -609,7 +664,13 @@ export function MerchantPage({
                             <td>
                               <Button
                                 variant="outline"
-                                disabled={!ready || tx.busy}
+                                disabled={
+                                  !ready ||
+                                  tx.busy ||
+                                  c.closed ||
+                                  BigInt(c.end) <=
+                                    BigInt(Math.floor(Date.now() / 1000))
+                                }
                                 onClick={() =>
                                   tx.run(() =>
                                     sdk!.pauseCampaign(BigInt(c.id), c.active),
@@ -626,6 +687,7 @@ export function MerchantPage({
                   </div>
                 )}
                 <FundingForm onSubmit={fund} disabled={!ready || tx.busy} />
+                <CampaignRefund />
               </section>
             </>
           ) : null}
@@ -758,9 +820,15 @@ function Analytics({
       <div className="metrics">
         {[
           ["Payment volume", amount(data.volume)],
-          ["Payments", data.paymentCount],
-          ["Unique customers", data.uniqueCustomers],
-          ["Returning customers", data.repeatCustomers],
+          ["Production payments (excludes test/self)", data.paymentCount],
+          ["Gross payments (includes excluded)", data.grossPaymentCount ?? "—"],
+          ["Policy-eligible payments", data.eligiblePaymentCount ?? "—"],
+          ["Reward-earning payments", data.rewardEarningPaymentCount ?? "—"],
+          ["Excluded payments", data.excludedPaymentCount ?? "—"],
+          ["Test payments", data.testPaymentCount ?? "—"],
+          ["Self payments", data.selfPaymentCount ?? "—"],
+          ["Unique public wallet addresses", data.uniqueCustomers],
+          ["Repeat public wallet addresses", data.repeatCustomers],
           ["Active campaigns", data.activeCampaigns],
           ["Campaign reserves", amount(data.fundsRemaining)],
           ["Rewards earned", amount(data.rewardsEarned)],
@@ -775,8 +843,8 @@ function Analytics({
       </div>
       <p className="small">
         Indexed through block {data.indexedThrough}. Campaign reserves include
-        outstanding earned liabilities. Analytics may lag confirmed
-        transactions.
+        outstanding earned liabilities. Wallet addresses are not unique people.
+        Analytics may lag confirmed transactions.
       </p>
     </section>
   );

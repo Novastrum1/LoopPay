@@ -6,37 +6,51 @@
     "dev": "pnpm --filter @looppay/web dev",
     "build": "pnpm --filter @looppay/web build",
     "lint": "eslint .",
-    "typecheck": "pnpm -r typecheck",
+    "typecheck": "tsc -p scripts/tsconfig.json && pnpm -r typecheck",
     "test": "vitest run",
-    "test:contracts": "cd packages/contracts && forge test -vv",
+    "test:contracts": "node scripts/foundry.mjs forge test --root packages/contracts -vv",
     "test:e2e": "pnpm --filter @looppay/web exec playwright test",
     "db:up": "docker compose up -d --wait postgres",
     "db:migrate": "node scripts/db.mjs migrate deploy",
     "db:generate": "node scripts/db.mjs generate",
     "indexer:dev": "pnpm --filter @looppay/indexer dev",
-    "contracts:anvil": "anvil --silent",
+    "contracts:anvil": "node scripts/foundry.mjs anvil --silent",
     "contracts:deploy:local": "node scripts/deploy.mjs local",
     "contracts:deploy:testnet": "node scripts/deploy.mjs testnet",
     "contracts:verify:testnet": "node scripts/verify.mjs",
     "abi": "node scripts/abi.mjs",
     "demo:local": "tsx --env-file=.env packages/sdk/examples/local.ts",
     "test:integration": "tsx --env-file=.env packages/sdk/examples/integration.ts",
-    "format": "prettier --write \"**/*.{ts,tsx,mjs,json,css,md,yml,yaml}\" && forge fmt --root packages/contracts",
-    "contracts:prepare:local": "node scripts/prepare-local.mjs"
+    "format": "prettier --write \"**/*.{ts,tsx,mjs,json,css,md,yml,yaml}\" && node scripts/foundry.mjs forge fmt --root packages/contracts",
+    "contracts:prepare:local": "node scripts/prepare-local.mjs",
+    "qie:validate-config": "tsx scripts/qie-readiness.ts",
+    "qie:smoke-test": "tsx scripts/qie-readiness.ts",
+    "indexer:replay": "pnpm --filter @looppay/indexer exec tsx src/replay.ts",
+    "test:indexer": "pnpm --filter @looppay/indexer exec tsx src/projection.integration.ts",
+    "contracts:coverage": "node scripts/foundry.mjs forge coverage --root packages/contracts --report summary"
   },
   "devDependencies": {
-    "typescript": "^5.7.3",
-    "vitest": "^3.2.0",
-    "eslint": "^9.20.0",
-    "typescript-eslint": "^8.24.0",
-    "@eslint/js": "^9.20.0",
-    "@types/node": "^22.13.0",
-    "tsx": "^4.19.2",
-    "@foundry-rs/forge": "^1.7.1",
-    "@foundry-rs/anvil": "^1.7.1",
-    "@foundry-rs/cast": "^1.7.1",
-    "viem": "^2.45.0",
-    "prettier": "^3.5.3"
+    "typescript": "5.9.3",
+    "vitest": "3.2.7",
+    "eslint": "9.39.5",
+    "typescript-eslint": "8.72.2",
+    "@eslint/js": "9.39.5",
+    "@types/node": "22.20.5",
+    "tsx": "4.23.15",
+    "@foundry-rs/forge": "1.7.1",
+    "@foundry-rs/anvil": "1.7.1",
+    "@foundry-rs/cast": "1.7.1",
+    "viem": "2.57.19",
+    "prettier": "3.10.1"
   },
-  "type": "module"
+  "type": "module",
+  "engines": {
+    "node": "24.22.2",
+    "pnpm": "10.28.2"
+  },
+  "pnpm": {
+    "overrides": {
+      "postcss@^8.5.3": "8.5.6"
+    }
+  }
 }

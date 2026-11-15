@@ -47,16 +47,40 @@ export async function project(db: Prisma.TransactionClient, e: IndexedEvent) {
         },
       });
       break;
-    case "InvoicePaid":
+    case "InvoiceTestMarked":
+      await db.invoice.update({
+        where: { id: s("invoiceId") },
+        data: { isTest: true },
+      });
+      break;
+    case "InvoicePaid": {
       await db.invoice.update({
         where: { id: s("invoiceId") },
         data: { status: "Paid" },
+      });
+      const classification = await db.event.findFirst({
+        where: {
+          transactionHash: tx,
+          name: "PaymentClassified",
+          args: { path: ["invoiceId"], equals: s("invoiceId") },
+        },
+      });
+      const classified = classification?.args as
+        Record<string, string | boolean> | undefined;
+      const earning = await db.earning.findFirst({
+        where: { invoiceId: s("invoiceId") },
       });
       await db.payment.create({
         data: {
           id: s("invoiceId"),
           merchantId: s("merchantId"),
           customer: s("customer").toLowerCase(),
+          isTest: classified?.isTest === true,
+          eligible: classified?.eligible === true,
+          exclusionReason: classified
+            ? String(classified.reason)
+            : "unclassified",
+          rewardEarning: !!earning,
           token: s("token"),
           amount: s("amount"),
           payout: s("payout"),
@@ -65,6 +89,7 @@ export async function project(db: Prisma.TransactionClient, e: IndexedEvent) {
         },
       });
       break;
+    }
     case "InvoiceCancelled":
       await db.invoice.update({
         where: { id: s("invoiceId") },
@@ -87,17 +112,20 @@ export async function project(db: Prisma.TransactionClient, e: IndexedEvent) {
         },
       });
       break;
+    case "UnreservedFundsWithdrawn":
     case "CampaignFunded":
     case "RewardEarned":
     case "RewardRedeemed": {
       const cid = s("campaignId");
       const row = await db.campaign.findUniqueOrThrow({ where: { id: cid } });
       const field =
-        e.name === "CampaignFunded"
-          ? "funded"
-          : e.name === "RewardEarned"
-            ? "earned"
-            : "redeemed";
+        e.name === "UnreservedFundsWithdrawn"
+          ? "withdrawn"
+          : e.name === "CampaignFunded"
+            ? "funded"
+            : e.name === "RewardEarned"
+              ? "earned"
+              : "redeemed";
       await db.campaign.update({
         where: { id: cid },
         data: {
@@ -138,6 +166,21 @@ export async function project(db: Prisma.TransactionClient, e: IndexedEvent) {
           transactionHash: tx,
         },
         update: { optedIn: a.optedIn === true, transactionHash: tx },
+      });
+      break;
+    case "CampaignClosed":
+      await db.campaign.update({
+        where: { id: s("campaignId") },
+        data: { closed: true, active: false },
+      });
+      break;
+    case "RewardPolicyChanged":
+      await db.campaign.update({
+        where: { id: s("campaignId") },
+        data: {
+          eligibility: s("eligibility"),
+          selfPaymentProtection: a.selfPaymentProtection === true,
+        },
       });
       break;
     case "CampaignPaused":

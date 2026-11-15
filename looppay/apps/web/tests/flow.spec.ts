@@ -1,10 +1,6 @@
 import { test, expect } from "@playwright/test";
 for (const width of [360, 768, 1440]) {
   test(`demo journey at ${width}px`, async ({ page }) => {
-    test.skip(
-      process.env.LOOPPAY_E2E_CHAIN === "true",
-      "Demo configuration only",
-    );
     await page.setViewportSize({ width, height: 1000 });
     const errors: string[] = [];
     page.on("pageerror", (error) => errors.push(error.message));
@@ -101,10 +97,6 @@ for (const width of [360, 768, 1440]) {
 }
 
 test("reduced motion keeps the globe static", async ({ page }) => {
-  test.skip(
-    process.env.LOOPPAY_E2E_CHAIN === "true",
-    "Demo configuration only",
-  );
   await page.emulateMedia({ reducedMotion: "reduce" });
   await page.goto("/");
   const globe = page.getByRole("img", { name: /Illustrative globe/ });
@@ -120,10 +112,6 @@ test("reduced motion keeps the globe static", async ({ page }) => {
 });
 
 test("globe pause and rotation controls work", async ({ page }) => {
-  test.skip(
-    process.env.LOOPPAY_E2E_CHAIN === "true",
-    "Demo configuration only",
-  );
   await page.goto("/");
   const globe = page.getByRole("img", { name: /Illustrative globe/ });
   await globe.scrollIntoViewIfNeeded();
@@ -152,4 +140,17 @@ test("globe pause and rotation controls work", async ({ page }) => {
   expect(
     await globe.evaluate((el) => (el as HTMLCanvasElement).toDataURL()),
   ).not.toEqual(rotated);
+});
+
+test("health and unconfigured readiness expose no connection details", async ({
+  request,
+}) => {
+  const health = await request.get("/api/health");
+  expect(health.status()).toBe(200);
+  expect((await health.json()).status).toBe("alive");
+  const readiness = await request.get("/api/readiness");
+  expect(readiness.status()).toBe(503);
+  const body = await readiness.text();
+  expect(JSON.parse(body).ready).toBe(false);
+  expect(body).not.toMatch(/postgresql|https?:|password|DATABASE_URL/);
 });

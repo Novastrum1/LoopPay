@@ -4,6 +4,7 @@ const port = integration ? 3002 : 3001;
 const url = `http://127.0.0.1:${port}`;
 export default defineConfig({
   testDir: "./tests",
+  testMatch: integration ? "**/chain.spec.ts" : "**/flow.spec.ts",
   timeout: 90000,
   expect: { timeout: 15000 },
   use: { baseURL: url },

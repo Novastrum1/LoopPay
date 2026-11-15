@@ -25,3 +25,54 @@ it("counts returning customers and computes redemption by value without floats",
   expect(result.redemptionRate).toBe("33.33");
   expect(result.availableToEarn).toBe("70");
 });
+it("separates test and self activity and deducts refunds without releasing liabilities", () => {
+  const result = summarize(
+    [
+      { customer: "a", amount: "100", eligible: true, rewardEarning: true },
+      { customer: "A", amount: "50", eligible: true },
+      {
+        customer: "test",
+        amount: "999999",
+        isTest: true,
+        eligible: false,
+        exclusionReason: "4",
+      },
+      {
+        customer: "owner",
+        amount: "888",
+        eligible: false,
+        exclusionReason: "1",
+      },
+      {
+        customer: "identity",
+        amount: "10",
+        eligible: false,
+        exclusionReason: "2",
+      },
+    ],
+    [
+      {
+        funded: "100",
+        earned: "30",
+        redeemed: "10",
+        withdrawn: "70",
+        closed: true,
+        active: false,
+        start: "0",
+        end: "999",
+      },
+    ],
+    1,
+    1n,
+  );
+  expect(result.volume).toBe("160");
+  expect(result.grossVolume).toBe("1001047");
+  expect(result.eligiblePaymentCount).toBe(2);
+  expect(result.rewardEarningPaymentCount).toBe(1);
+  expect(result.excludedPaymentCount).toBe(3);
+  expect(result.uniquePublicWalletAddresses).toBe(2);
+  expect(result.repeatPublicWalletAddresses).toBe(1);
+  expect(result.fundsRemaining).toBe("20");
+  expect(result.availableToEarn).toBe("0");
+  expect(result.activeCampaigns).toBe(0);
+});

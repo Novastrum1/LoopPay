@@ -42,7 +42,7 @@ async function poll() {
     const block = await client.getBlock({ blockNumber: checkpoint.block });
     if (block.hash !== checkpoint.hash)
       throw new ReorgError(
-        "Checkpoint reorg: stop and rebuild into a fresh database from deployment block",
+        "Checkpoint reorg: stop indexer, back up database, and follow docs/indexer-recovery.md to replay canonical events",
       );
   }
   const head = await client.getBlockNumber();
@@ -56,6 +56,13 @@ async function poll() {
       fromBlock: from,
       toBlock: to,
     });
+    logs.sort((a, b) =>
+      a.blockNumber! < b.blockNumber!
+        ? -1
+        : a.blockNumber! > b.blockNumber!
+          ? 1
+          : (a.logIndex ?? 0) - (b.logIndex ?? 0),
+    );
     const block = await client.getBlock({ blockNumber: to });
     await db.$transaction(
       async (tx) => {

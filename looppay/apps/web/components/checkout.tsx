@@ -45,6 +45,42 @@ export function Checkout({
     enabled: !!sdk && !!i && i[6] > 0n,
     queryFn: () => sdk!.getCampaign(i![6]),
   });
+  const eligibility = useQuery({
+    queryKey: [
+      "reward-eligibility",
+      invoiceId,
+      account.address,
+      i?.[6].toString(),
+    ],
+    enabled: !!sdk && !!i,
+    queryFn: async () => {
+      const test = await sdk!.publicClient.readContract({
+        address: network!.checkout,
+        abi: checkoutAbi,
+        functionName: "isTestInvoice",
+        args: [BigInt(invoiceId)],
+      });
+      if (test)
+        return "Test invoice: no rewards; excluded from production analytics.";
+      if (!i![6]) return "No reward campaign attached.";
+      if (!account.address)
+        return "Connect your wallet to check reward eligibility.";
+      const [eligible, reason] = await sdk!.publicClient.readContract({
+        address: network!.rewards,
+        abi: rewardsAbi,
+        functionName: "rewardEligibility",
+        args: [i![6], account.address],
+      });
+      return eligible
+        ? "Wallet policy eligible. Dates, budget, and lifetime cap still apply."
+        : reason === 1
+          ? "Merchant owner/payout self-payment: no rewards."
+          : reason === 2
+            ? "QIE ID verification is not configured on this deployment. Payment remains possible; no rewards."
+            : "Campaign rewards are disabled.";
+    },
+    refetchInterval: 10000,
+  });
   const tokenSupported = useQuery({
     queryKey: ["approved-token", i?.[2]],
     enabled: !!sdk && !!i,
@@ -225,6 +261,11 @@ export function Checkout({
           </dl>
           <p className="small">
             {profile.terms ?? "No additional merchant terms published."}
+          </p>
+          <p className="notice" role="status">
+            {eligibility.error
+              ? "Reward eligibility unavailable. Payment does not guarantee rewards."
+              : (eligibility.data ?? "Checking reward eligibility…")}
           </p>
           {c ? (
             <p className="small">

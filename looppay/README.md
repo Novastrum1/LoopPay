@@ -1,5 +1,7 @@
 # LoopPay
 
+[![LoopPay checks](https://github.com/Novastrum1/LoopPay/actions/workflows/ci.yml/badge.svg)](https://github.com/Novastrum1/LoopPay/actions/workflows/ci.yml)
+
 **Good business comes around.** Stablecoin checkout and a fully reserved, interoperable loyalty network for independent merchants on QIE.
 
 Customers scan an invoice URL, review the merchant and token, approve only when necessary, and pay directly into the merchant’s wallet. Merchants fund loyalty campaigns. Customers earn non-transferable token-denominated credits and spend them with opted-in Loop Network neighbors. The issuing campaign pays the redeeming shop. There is no protocol fee in v1.
@@ -68,7 +70,7 @@ pnpm lint
 pnpm typecheck
 pnpm test
 pnpm test:contracts
-pnpm exec forge coverage --root packages/contracts --report summary
+pnpm contracts:coverage
 pnpm build
 pnpm --filter @looppay/web exec playwright install --with-deps chromium
 pnpm test:e2e
@@ -151,42 +153,69 @@ Run `npm run build` from `looppay/`; the existing pnpm workspace, routes, SDK, A
 
 Missing/invalid public configuration or absent contract bytecode enables labelled browser Demo mode. RPC outages show an unavailable state instead of fabricated live results. `/pay/demo` always opens an isolated example. Globe cities, merchant examples, and ticker activity are always Demo data. Demo invoices/campaigns use localStorage, have no monetary value, and links only work in the browser where created. Clear storage to reset. Demo rewards reset on reload and are independent of simulated checkout earnings.
 
-Live balances and writes use the existing SDK. Campaign discovery, history, partner metadata, and analytics require PostgreSQL and the running existing indexer. Missing metadata shows unpublished states. V1 supports percentage campaigns only; fixed-amount rewards need a future contract feature. Creating a campaign, approving spend, and depositing its reserve are separate transactions. Reserves start at zero and cannot be withdrawn in v1. No protocol fees in v1; network gas applies.
+Live balances and writes use the existing SDK. Campaign discovery, history, partner metadata, and analytics require PostgreSQL and the running existing indexer. Missing metadata shows unpublished states. V1 supports percentage campaigns only; fixed-amount rewards need a future contract feature. Creating a campaign, approving spend, and depositing its reserve are separate transactions. Reserves start at zero. Owners can refund only unreserved funds after permanent close/end; earned credits remain reserved and redeemable. No protocol fees in v1; network gas applies.
 
 ### Environment reference
 
-| Variable | Purpose |
-| --- | --- |
-| `DATABASE_URL` | Server/indexer PostgreSQL connection (secret). |
-| `LOCAL_RPC_URL` | Local deployment script RPC. |
-| `NEXT_PUBLIC_CHAIN_ID` | EVM chain ID: use verified deployment network. |
-| `NEXT_PUBLIC_RPC_URL` | Public browser RPC; never include secret credentials. |
-| `NEXT_PUBLIC_EXPLORER_URL` | Optional public explorer origin. |
-| `NEXT_PUBLIC_APP_URL` | Public app origin for share links; browser origin is the fallback. |
-| `APP_URL` | Existing server/operator application origin. |
-| `NEXT_PUBLIC_REGISTRY_ADDRESS` | Existing deployed registry address. |
-| `NEXT_PUBLIC_CHECKOUT_ADDRESS` | Existing deployed checkout address. |
-| `NEXT_PUBLIC_REWARDS_ADDRESS` | Existing deployed rewards address. |
-| `NEXT_PUBLIC_STABLECOIN_ADDRESS` | Registry-approved exact-transfer stablecoin address. |
-| `NEXT_PUBLIC_TOKEN_SYMBOL` | Actual stablecoin display symbol. |
-| `NEXT_PUBLIC_TOKEN_DECIMALS` | Actual stablecoin decimals. |
-| `STABLECOIN_ADDRESS` | Deployment script token address. |
-| `DEPLOYER_ADDRESS` | Public deployer address. |
-| `DEPLOYER_ACCOUNT` | Encrypted Foundry keystore account name, never a private key. |
-| `QIE_TESTNET_RPC_URL` | Testnet deployment and verification RPC. |
-| `QIE_RPC_URL` | Optional indexer RPC override. |
-| `QIE_MAINNET_RPC_URL` | Reserved operator mainnet RPC. |
-| `QIE_MAINNET_CHAIN_ID` | Reserved operator mainnet chain ID. |
-| `QIE_MAINNET_STABLECOIN_ADDRESS` | Reserved operator mainnet token. |
-| `QIE_TESTNET_VERIFIER_URL` | Verifier endpoint; confirm compatibility before use. |
-| `QIE_VERIFICATION_WORKFLOW_CONFIRMED` | Explicit opt-in to the existing verification script. |
-| `VERIFY_CONTRACT_ADDRESS` | Address for verification. |
-| `VERIFY_CONTRACT_NAME` | Fully qualified contract name for verification. |
-| `VERIFY_CONSTRUCTOR_ARGS` | ABI-encoded constructor arguments. |
-| `DEPLOYMENT_BLOCK` | First registry deployment block; fresh database per network/deployment. |
-| `INDEXER_CONFIRMATIONS` | Indexer confirmation depth. |
-| `DEMO_MODE` | Existing local-only synthetic analytics flag; separate from browser demo. |
-| `LOOPPAY_E2E_CHAIN` | Test-only switch for existing local-chain integration tests. |
-| `NODE_ENV` | Framework-managed; setup badge is development-only. |
+| Variable                              | Purpose                                                                   |
+| ------------------------------------- | ------------------------------------------------------------------------- |
+| `DATABASE_URL`                        | Server/indexer PostgreSQL connection (secret).                            |
+| `LOCAL_RPC_URL`                       | Local deployment script RPC.                                              |
+| `NEXT_PUBLIC_CHAIN_ID`                | EVM chain ID: use verified deployment network.                            |
+| `NEXT_PUBLIC_RPC_URL`                 | Public browser RPC; never include secret credentials.                     |
+| `NEXT_PUBLIC_EXPLORER_URL`            | Optional public explorer origin.                                          |
+| `NEXT_PUBLIC_APP_URL`                 | Public app origin for share links; browser origin is the fallback.        |
+| `APP_URL`                             | Existing server/operator application origin.                              |
+| `NEXT_PUBLIC_REGISTRY_ADDRESS`        | Existing deployed registry address.                                       |
+| `NEXT_PUBLIC_CHECKOUT_ADDRESS`        | Existing deployed checkout address.                                       |
+| `NEXT_PUBLIC_REWARDS_ADDRESS`         | Existing deployed rewards address.                                        |
+| `NEXT_PUBLIC_STABLECOIN_ADDRESS`      | Registry-approved exact-transfer stablecoin address.                      |
+| `NEXT_PUBLIC_TOKEN_SYMBOL`            | Actual stablecoin display symbol.                                         |
+| `NEXT_PUBLIC_TOKEN_DECIMALS`          | Actual stablecoin decimals.                                               |
+| `STABLECOIN_ADDRESS`                  | Deployment script token address.                                          |
+| `DEPLOYER_ADDRESS`                    | Public deployer address.                                                  |
+| `DEPLOYER_ACCOUNT`                    | Encrypted Foundry keystore account name, never a private key.             |
+| `QIE_TESTNET_RPC_URL`                 | Testnet deployment and verification RPC.                                  |
+| `QIE_RPC_URL`                         | Optional indexer RPC override.                                            |
+| `QIE_MAINNET_RPC_URL`                 | Reserved operator mainnet RPC.                                            |
+| `QIE_MAINNET_CHAIN_ID`                | Reserved operator mainnet chain ID.                                       |
+| `QIE_MAINNET_STABLECOIN_ADDRESS`      | Reserved operator mainnet token.                                          |
+| `QIE_TESTNET_VERIFIER_URL`            | Verifier endpoint; confirm compatibility before use.                      |
+| `QIE_VERIFICATION_WORKFLOW_CONFIRMED` | Explicit opt-in to the existing verification script.                      |
+| `VERIFY_CONTRACT_ADDRESS`             | Address for verification.                                                 |
+| `VERIFY_CONTRACT_NAME`                | Fully qualified contract name for verification.                           |
+| `VERIFY_CONSTRUCTOR_ARGS`             | ABI-encoded constructor arguments.                                        |
+| `DEPLOYMENT_BLOCK`                    | First registry deployment block; fresh database per network/deployment.   |
+| `INDEXER_CONFIRMATIONS`               | Indexer confirmation depth.                                               |
+| `DEMO_MODE`                           | Existing local-only synthetic analytics flag; separate from browser demo. |
+| `LOOPPAY_E2E_CHAIN`                   | Test-only switch for existing local-chain integration tests.              |
+| `NODE_ENV`                            | Framework-managed; setup badge is development-only.                       |
 
 To go live, supply verified QIE deployment addresses, approved token identity/decimals, public RPC/explorer, deployment block, database and running indexer. Supply real merchant metadata (name, area, category), campaign examples and contact address. Contact currently uses the repository issue form. No audit or partnership is claimed.
+
+## Testnet readiness revision
+
+This remains an undeployed development product. Contract changes require a fresh deployment; no QIE sources are claimed verified. Node 24.22.2, pnpm 10.28.2, Foundry 1.7.1 and Solidity 0.8.24 are pinned. See [dependency policy](docs/dependency-policy.md); run `pnpm install --frozen-lockfile` from looppay/. Both devcontainers use the same runtime. CI preserves generation/migration, lint, types, Foundry/coverage, ABI consistency, Vitest, build and Playwright, adds PostgreSQL projection checks, cancels superseded runs and publishes a summary. The badge links actual remote status; local checks do not establish remote success. Require `verify` in branch protection after pushing.
+
+Campaigns expose Draft / Active / Paused / Ended / permanently Closed states. Pausing alone permits no refund. Only their owner can withdraw `budget - reserved` after end or close; customer credits never expire and remain non-transferable/redeemable after closure. Operators cannot withdraw. The merchant UI has live balance checks and explicit closure acknowledgement.
+
+New campaigns default to excluding owner/current payout from earning. Creation atomically selects Open, QIE ID verified or Disabled rewards. Explicit test invoices settle token amounts normally but never earn or count in production analytics. Linked wallets and collusion remain unproven: [anti-abuse](docs/anti-abuse.md). Wallet counts never represent unique humans. QIE ID verification is not configured; identity-required campaigns award no credits while allowing payment. [Integration gate](docs/qie-id-integration.md).
+
+Official sources rechecked 2026-11-15:
+
+| Input                                   | Confirmation                                                                                                                                                                             | Gate                                                                                               |
+| --------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------- |
+| Testnet network                         | [Official network docs](https://docs.qie.digital/getting-started-with-qie-blockchain/4.-access-mainnet-or-testnet): 1983, https://rpc1testnet.qie.digital/, https://testnet.qie.digital/ | Validate RPC chain; separate testnet configuration                                                 |
+| Mainnet network                         | Same official page: 1990, https://rpc1mainnet.qie.digital/, https://mainnet.qie.digital/                                                                                                 | Mainnet configuration stays blank; no deployment command                                           |
+| QIE Stable Coin address/decimals/symbol | Not confirmed by reviewed official sources                                                                                                                                               | Leave unset pending official identity/behavior confirmation                                        |
+| Source verification                     | [Official hackathon quickstart](https://hackathon.qie.digital/) directs explorer verification                                                                                            | Manual workflow confirmation required; automated API compatibility unconfirmed                     |
+| QIE ID                                  | [Official product](https://id.qie.digital/) describes IDs/credentials                                                                                                                    | No confirmed verification API/ABI/proof protocol; disabled                                         |
+| QIE Wallet                              | Injected EIP-6963 flow retained                                                                                                                                                          | Real desktop/mobile and deep links pending [QA](docs/wallet-qa.md); no compatibility certification |
+
+Keep testnet/mainnet separate. Placeholder-only files: config/qie.testnet.example.env and config/qie.mainnet.example.env. Readiness scripts load ignored `.env.local` or supplied environment; deployment wrappers also support legacy local `.env`. Never place credentials in public RPC URLs. Before testnet deployment run `pnpm qie:validate-config --pre-deploy`; after recording addresses run `pnpm qie:validate-config` and `pnpm qie:smoke-test`. These are read-only and return redacted failed gates. Mocks require explicit testnet-only acceptance and TESTUSD labelling; mainnet rejects them. Validation flags are operator assertions, not independent source-verification evidence.
+
+`/wallet` shows connectors, chain switching and identity readiness. `/api/health` reports liveness; `/api/readiness` reports database, network, checkpoint, canonicality, head and lag. INDEXER_MAX_LAG_BLOCKS defaults to 100. [Recovery](docs/indexer-recovery.md) supports backed-up replay in the same database. Apply additive migrations with `pnpm db:migrate`; run `pnpm test:indexer` against local PostgreSQL (fixtures roll back).
+
+Follow the [testnet runbook](docs/testnet-runbook.md), [demo script](docs/demo-script.md), [evidence template](docs/release-evidence-template.md), [pilot plan](docs/merchant-pilot-plan.md) and [independent review checklist](docs/security-review-checklist.md). Human-controlled testnet signing remains `pnpm contracts:deploy:testnet` with an encrypted keystore account name. Verification adapter execution remains explicitly gated. No mainnet deployment or real funds are used for this work.
+
+Full implementation, changed-file list, observed checks and remaining release gates: [handoff report](docs/implementation-report.md).

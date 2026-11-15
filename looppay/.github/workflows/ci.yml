@@ -1,9 +1,15 @@
+# Mirror for reference; GitHub executes the repository-root .github/workflows/ci.yml.
 name: LoopPay checks
 on: [push, pull_request]
+concurrency:
+  group: checks-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 permissions:
   contents: read
 jobs:
   verify:
+    name: verify
+    timeout-minutes: 30
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -26,15 +32,56 @@ jobs:
           version: 10.28.2
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version-file: looppay/.node-version
           cache: pnpm
           cache-dependency-path: looppay/pnpm-lock.yaml
       - run: pnpm install --frozen-lockfile
       - run: pnpm db:generate && pnpm db:migrate
       - run: pnpm lint && pnpm typecheck
       - run: pnpm test:contracts
-      - run: pnpm exec forge coverage --root packages/contracts --report summary
+      - run: pnpm contracts:coverage
       - run: pnpm abi && git diff --exit-code -- packages/sdk/src/abi.ts
-      - run: pnpm test && pnpm build
+      - run: pnpm test && pnpm test:indexer && pnpm build
       - run: pnpm --filter @looppay/web exec playwright install --with-deps chromium
       - run: pnpm test:e2e
+      - name: Local Anvil settlement and browser integration
+        run: |
+          pnpm contracts:anvil --block-time 1 > /tmp/looppay-anvil.log 2>&1 &
+          anvil_pid=$!
+          indexer_pid=""
+          trap 'kill "$anvil_pid" $indexer_pid 2>/dev/null || true' EXIT
+          for attempt in {1..20}; do
+            if pnpm contracts:prepare:local; then break; fi
+            sleep 1
+          done
+          pnpm contracts:deploy:local
+          pnpm exec tsx scripts/configure-local.ts
+          pnpm demo:local
+          pnpm test:integration
+          pnpm indexer:dev > /tmp/looppay-indexer.log 2>&1 &
+          indexer_pid=$!
+          LOOPPAY_E2E_CHAIN=true pnpm test:e2e
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-failure-report
+          path: |
+            looppay/apps/web/playwright-report/
+            looppay/apps/web/test-results/
+          if-no-files-found: ignore
+      - name: Check summary
+        if: always()
+        run: |
+          cat >> "$GITHUB_STEP_SUMMARY" <<'SUMMARY'
+          ## LoopPay verification
+          Review step outcomes above; this list records configured commands, not a success claim.
+          - Frozen pnpm install
+          - Prisma generation and migrations
+          - ESLint and TypeScript
+          - Foundry tests and coverage
+          - ABI generation and consistency
+          - Vitest and Next.js build
+          - Chromium and Playwright demo + live local-chain browser flows
+          - Local Anvil deployment, SDK settlement, close/refund and post-close redemption
+          Only local Anvil deployment is used; no QIE deployment or production credentials.
+          SUMMARY

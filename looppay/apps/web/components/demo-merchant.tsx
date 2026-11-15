@@ -230,7 +230,9 @@ export function DemoMerchant({ view }: { view: string }) {
               </p>
               <p>
                 Real reserve funding needs separate approval and deposit
-                transactions. Reserve funds cannot be withdrawn in v1.
+                transactions. Live campaigns allow owner refunds of unreserved
+                funds after end or permanent close; this demo does not simulate
+                refunds.
               </p>
               <Button
                 onClick={() => {

@@ -10,6 +10,7 @@ contract CallbackToken is ERC20 {
     address target;
     bytes payload;
     bool public blocked;
+    bytes4 public revertSelector;
 
     constructor() ERC20("Attack", "ATK") {
         _mint(msg.sender, 1e24);
@@ -24,7 +25,8 @@ contract CallbackToken is ERC20 {
         if (target != address(0)) {
             address saved = target;
             target = address(0);
-            (bool ok,) = saved.call(payload);
+            (bool ok, bytes memory result) = saved.call(payload);
+            if (result.length >= 4) revertSelector = bytes4(result);
             blocked = !ok;
         }
         super._update(from, to, value);
@@ -32,6 +34,36 @@ contract CallbackToken is ERC20 {
 }
 
 contract ReentrancyTest is Test {
+    function testReentrantRefundBlocked() public {
+        LoopPayRegistry r = new LoopPayRegistry(address(this));
+        LoopPayRewards rw = new LoopPayRewards(r);
+        CallbackToken t = new CallbackToken();
+        r.setToken(address(t), true);
+        uint256 m = r.createMerchant(address(this), "");
+        uint256 cid =
+            rw.createCampaign(m, address(t), 500, 0, 1000, uint64(block.timestamp), uint64(block.timestamp + 100));
+        t.approve(address(rw), 1000);
+        rw.fundCampaign(cid, 1000);
+        rw.closeCampaign(cid);
+        // Token is itself a merchant owner: a callback must fail at the reentrancy guard, not ownership.
+        vm.prank(address(t));
+        uint256 other = r.createMerchant(address(t), "");
+        vm.prank(address(t));
+        uint256 otherCampaign =
+            rw.createCampaign(other, address(t), 500, 0, 1000, uint64(block.timestamp), uint64(block.timestamp + 100));
+        t.transfer(address(t), 10);
+        vm.startPrank(address(t));
+        t.approve(address(rw), 10);
+        rw.fundCampaign(otherCampaign, 10);
+        rw.closeCampaign(otherCampaign);
+        vm.stopPrank();
+        t.arm(address(rw), abi.encodeCall(rw.withdrawUnreservedFunds, (otherCampaign, 1, address(t))));
+        rw.withdrawUnreservedFunds(cid, 1000, address(this));
+        assertTrue(t.blocked());
+        assertEq(t.revertSelector(), bytes4(keccak256("ReentrancyGuardReentrantCall()")));
+        assertEq(t.balanceOf(address(rw)), 10);
+    }
+
     function testReentrantPaymentBlocked() public {
         LoopPayRegistry r = new LoopPayRegistry(address(this));
         LoopPayRewards rw = new LoopPayRewards(r);
@@ -62,6 +94,7 @@ contract ReentrancyTest is Test {
         rw.fundCampaign(cid, 1000);
         uint256 i = c.createInvoice(m, address(t), 100, bytes32(0), uint64(block.timestamp + 100), cid);
         t.approve(address(c), 100);
+        rw.setRewardPolicy(cid, LoopPayRewards.Eligibility.Open, false);
         c.payInvoice(i);
         rw.optInToPartnerNetwork(m, true);
         t.arm(address(rw), abi.encodeCall(rw.redeem, (cid, m, 100, bytes32(uint256(2)))));

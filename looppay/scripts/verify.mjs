@@ -1,7 +1,12 @@
+import { foundryBinary } from "./foundry.mjs";
 import { spawnSync } from "node:child_process";
 import { loadEnvFile } from "node:process";
 try {
-  loadEnvFile(".env");
+  try {
+    loadEnvFile(".env.local");
+  } catch {
+    loadEnvFile(".env");
+  }
 } catch {
   /* environment may be supplied by CI */
 }
@@ -18,8 +23,21 @@ for (const name of required)
     throw new Error(
       `Set ${name} after confirming the official QIE verification workflow`,
     );
+let endpoint;
+try {
+  endpoint = new URL(process.env.QIE_TESTNET_RPC_URL);
+} catch {
+  throw new Error("Set a valid public RPC URL");
+}
+if (
+  endpoint.username ||
+  endpoint.password ||
+  endpoint.search ||
+  !["http:", "https:"].includes(endpoint.protocol)
+)
+  throw new Error("Use a public RPC URL without embedded credentials");
 const chain = spawnSync(
-  "cast",
+  foundryBinary("cast"),
   ["chain-id", "--rpc-url", process.env.QIE_TESTNET_RPC_URL],
   { encoding: "utf8" },
 );
@@ -27,7 +45,7 @@ if (chain.stdout.trim() !== "1983") throw new Error("Not QIE testnet");
 if (process.env.QIE_VERIFICATION_WORKFLOW_CONFIRMED !== "true")
   throw new Error("Official verification workflow confirmation is required");
 const result = spawnSync(
-  "forge",
+  foundryBinary("forge"),
   [
     "verify-contract",
     process.env.VERIFY_CONTRACT_ADDRESS,
