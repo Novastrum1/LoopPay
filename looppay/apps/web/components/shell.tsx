@@ -1,62 +1,9 @@
+"use client";
+import { useState } from "react";
 import Link from "next/link";
-import { ArrowUpRight } from "lucide-react";
 import Image from "next/image";
+import { Menu, X } from "lucide-react";
 import { WalletButton } from "./wallet";
-export function Header() {
-  return (
-    <header>
-      <Link href="/" className="brand brand-logo" aria-label="LoopPay home">
-        <Image
-          src="/brand/looppay-logo.webp"
-          width={840}
-          height={201}
-          alt="LoopPay"
-          className="brand-image"
-          priority
-        />
-      </Link>
-      <nav aria-label="Main navigation">
-        <Link href="/merchant">For merchants</Link>
-        <Link href="/wallet">My rewards</Link>
-        <Link href="/docs">How it works</Link>
-      </nav>
-      <WalletButton />
-    </header>
-  );
-}
-export function MerchantNav() {
-  return (
-    <nav className="merchant-nav" aria-label="Merchant navigation">
-      {[
-        ["/merchant", "Overview"],
-        ["/merchant/invoices/new", "New invoice"],
-        ["/merchant/campaigns", "Campaigns"],
-        ["/merchant/partners", "Loop Network"],
-        ["/merchant/analytics", "Analytics"],
-      ].map(([url, label]) => (
-        <Link href={url} key={url}>
-          {label}
-          <ArrowUpRight size={13} />
-        </Link>
-      ))}
-    </nav>
-  );
-}
-export function Footer() {
-  return (
-    <footer>
-      <Link href="/" className="brand brand-logo" aria-label="LoopPay home">
-        <Image
-          src="/brand/looppay-logo.webp"
-          width={840}
-          height={201}
-          alt="LoopPay"
-          className="brand-image"
-        />
-      </Link>
-      <p>Good business comes around.</p>
-      <Link href="/docs">Product, rewards & safety ↗</Link>
-      <span>Built on QIE · No protocol fees in v1</span>
-    </footer>
-  );
-}
+export function Header(){const [open,setOpen]=useState(false);return <header><Link href="/" aria-label="LoopPay home"><Image src="/brand/looppay-logo.webp" width={840} height={201} alt="LoopPay" className="brand-image" priority /></Link><button className="button outline menu-toggle" aria-expanded={open} aria-controls="main-nav" onClick={()=>setOpen(!open)}>{open?<X size={20}/>:<Menu size={20}/>}<span>Menu</span></button><nav id="main-nav" className={open?"open":""} aria-label="Main navigation">{[["/merchant","For merchants"],["/wallet","My rewards"],["/docs","How it works"]].map(([href,label])=><Link onClick={()=>setOpen(false)} key={href} href={href}>{label}</Link>)}</nav><WalletButton/></header>}
+export function MerchantNav(){return <nav className="merchant-nav" aria-label="Merchant navigation">{[["/merchant","Overview"],["/merchant/invoices/new","New invoice"],["/merchant/campaigns","Campaigns"],["/merchant/partners","Loop Network"],["/merchant/analytics","Analytics"]].map(([href,label])=><Link key={href} href={href}>{label}</Link>)}</nav>}
+export function Footer(){return <footer><Link href="/" aria-label="LoopPay home"><Image src="/brand/looppay-logo.webp" width={840} height={201} alt="LoopPay" className="brand-image"/></Link><div className="footer-links"><a href="https://github.com/Novastrum1/LoopPay">GitHub ↗</a><a href="https://github.com/Novastrum1/LoopPay/issues/new">Contact ↗</a><Link href="/docs">How it works</Link></div><span>Built on QIE · No protocol fees in v1</span></footer>}
