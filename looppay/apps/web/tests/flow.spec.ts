@@ -111,37 +111,6 @@ test("reduced motion keeps the globe static", async ({ page }) => {
   ).toEqual(first);
 });
 
-test("globe pause and rotation controls work", async ({ page }) => {
-  await page.goto("/");
-  const globe = page.getByRole("img", { name: /Illustrative globe/ });
-  await globe.scrollIntoViewIfNeeded();
-  await expect(
-    page.getByText("13 countries · one illustrative loop"),
-  ).toBeVisible();
-  await page.getByRole("button", { name: "Pause globe animation" }).click();
-  await expect(
-    page.getByRole("button", { name: "Resume globe animation" }),
-  ).toHaveAttribute("aria-pressed", "true");
-  await page.waitForTimeout(150);
-  const paused = await globe.evaluate((el) =>
-    (el as HTMLCanvasElement).toDataURL(),
-  );
-  await page.waitForTimeout(250);
-  expect(
-    await globe.evaluate((el) => (el as HTMLCanvasElement).toDataURL()),
-  ).toEqual(paused);
-  await page.getByRole("button", { name: "Rotate globe left" }).click();
-  const rotated = await globe.evaluate((el) =>
-    (el as HTMLCanvasElement).toDataURL(),
-  );
-  expect(rotated).not.toEqual(paused);
-  await globe.focus();
-  await page.keyboard.press("ArrowRight");
-  expect(
-    await globe.evaluate((el) => (el as HTMLCanvasElement).toDataURL()),
-  ).not.toEqual(rotated);
-});
-
 test("health and unconfigured readiness expose no connection details", async ({
   request,
 }) => {

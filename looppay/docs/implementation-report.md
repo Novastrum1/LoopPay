@@ -33,6 +33,7 @@ Date: 2026-11-15. Scope: existing monorepo, preserving direct merchant settlemen
 | Production API probe | Health 200; readiness 200, chain 31337, canonical checkpoint, lag 12; real indexed withdrawal-aware analytics (not synthetic) |
 | pnpm qie:smoke-test | Correctly refused readiness for unset official inputs; redacted report, nonzero exit |
 | git diff --check | Passed |
+| Remote CI for `21f0fdf67fddbb081941776f1a531da421d22ec8` | [LoopPay checks run 43708128082](https://github.com/Novastrum1/LoopPay/actions/runs/43708128082) passed on push to main, completed 2026-11-15 11:23:25 UTC; Vercel commit status also reported success |
 
 Initial browser launch failed because system libraries were absent; installed Playwright's required Chromium dependencies. A subsequent concurrent build/browser run caused a renderer crash; final browser verification runs sequentially after the build. Those failures were not suppressed or converted into success. Development warnings include Next's custom ESLint-config notice and dev-origin notice; dependency peer/deprecation warnings remain documented review items.
 
@@ -43,7 +44,7 @@ Initial browser launch failed because system libraries were absent; installed Pl
 - Confirm source-verification workflow. The official hackathon quickstart directs explorer verification; automated Blockscout compatibility remains unconfirmed.
 - Perform and record real QIE Wallet desktop/mobile and injected-wallet QA. Automated injection is not QIE Wallet certification.
 - Complete independent security review and reproducibly pinned static analysis; Slither was documented but not installed/run. Canonical replay is implemented and documented; destructive reorg rehearsal remains an operator exercise against a backup.
-- Push reviewed code and observe the exact commit's GitHub Actions result. Current GitHub status API showed Vercel success only; no remote Actions success for these uncommitted changes is claimed. Require verify in branch protection.
+- Remote Actions verification is complete for implementation commit `21f0fdf67fddbb081941776f1a531da421d22ec8`: [LoopPay checks](https://github.com/Novastrum1/LoopPay/actions/runs/43708128082) passed. Require verify in branch protection; branch protection configuration has not been verified.
 
 Only the human runs testnet signing: configure the ignored environment and encrypted Foundry account name, run qie:validate-config --pre-deploy, then contracts:deploy:testnet and the locally operated keystore prompt. Record addresses/first block, verify sources using the confirmed workflow, run full qie:validate-config and qie:smoke-test, then execute the complete [testnet runbook](testnet-runbook.md). The optional contracts:verify:testnet adapter is gated on official workflow confirmation. Never send passwords, wallet secrets or production connection strings to the agent.
 

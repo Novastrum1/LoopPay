@@ -1,6 +1,5 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import { ArrowLeft, ArrowRight, Pause, Play } from "lucide-react";
 import { landCoordinates } from "../lib/globe-land";
 
 type Vector = readonly [number, number, number];
@@ -68,15 +67,7 @@ for (let lon = -180; lon < 180; lon += 30)
 
 export function Globe() {
   const ref = useRef<HTMLCanvasElement>(null);
-  const controls = useRef<
-    | {
-        rotate: (delta: number) => void;
-        pause: (value: boolean) => void;
-      }
-    | undefined
-  >(undefined);
   const [event, setEvent] = useState(0);
-  const [paused, setPaused] = useState(false);
   useEffect(() => {
     const canvas = ref.current!;
     const ctx = canvas.getContext("2d");
@@ -86,12 +77,9 @@ export function Globe() {
       yaw = -20 * radians,
       frame = 0,
       last = 0,
-      previousTime = 0,
-      drag = false,
-      pointer = 0;
+      previousTime = 0;
     let inView = false,
-      visible = !document.hidden,
-      manuallyPaused = false;
+      visible = !document.hidden;
     let cos = Math.cos(yaw),
       sin = Math.sin(yaw);
     const tilt = -0.18,
@@ -110,7 +98,7 @@ export function Globe() {
         scale,
       };
     };
-    const moving = () => !reduced.matches && !manuallyPaused;
+    const moving = () => !reduced.matches;
     function stroke(points: readonly Vector[], color: string, width: number) {
       ctx!.strokeStyle = color;
       ctx!.lineWidth = width;
@@ -138,7 +126,7 @@ export function Globe() {
       const elapsed = previousTime ? Math.min(64, time - previousTime) : 0;
       previousTime = time;
       last = time;
-      if (moving() && !drag) yaw += elapsed * 0.000035;
+      if (moving()) yaw += elapsed * 0.000035;
       cos = Math.cos(yaw);
       sin = Math.sin(yaw);
       ctx!.clearRect(0, 0, size, size);
@@ -289,17 +277,6 @@ export function Globe() {
       ctx!.setTransform(dpr, 0, 0, dpr, 0, 0);
       render();
     }
-    controls.current = {
-      rotate: (delta) => {
-        yaw += delta;
-        render();
-      },
-      pause: (value) => {
-        manuallyPaused = value;
-        previousTime = 0;
-        render();
-      },
-    };
     const observer = new ResizeObserver(resize);
     observer.observe(canvas);
     const intersection = new IntersectionObserver(([entry]) => {
@@ -315,54 +292,23 @@ export function Globe() {
       cancelAnimationFrame(frame);
       if (visible) render();
     }
-    function down(e: PointerEvent) {
-      drag = true;
-      pointer = e.clientX;
-      canvas.setPointerCapture(e.pointerId);
-    }
-    function move(e: PointerEvent) {
-      if (!drag) return;
-      yaw += (e.clientX - pointer) * 0.006;
-      pointer = e.clientX;
-      render();
-    }
-    function up() {
-      drag = false;
-    }
-    function key(e: KeyboardEvent) {
-      if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
-      e.preventDefault();
-      controls.current?.rotate(e.key === "ArrowLeft" ? -0.25 : 0.25);
-    }
-    canvas.addEventListener("pointerdown", down);
-    canvas.addEventListener("pointermove", move);
-    canvas.addEventListener("pointerup", up);
-    canvas.addEventListener("pointercancel", up);
-    canvas.addEventListener("keydown", key);
     document.addEventListener("visibilitychange", visibility);
     reduced.addEventListener("change", render);
     return () => {
       cancelAnimationFrame(frame);
       observer.disconnect();
       intersection.disconnect();
-      controls.current = undefined;
-      canvas.removeEventListener("pointerdown", down);
-      canvas.removeEventListener("pointermove", move);
-      canvas.removeEventListener("pointerup", up);
-      canvas.removeEventListener("pointercancel", up);
-      canvas.removeEventListener("keydown", key);
       document.removeEventListener("visibilitychange", visibility);
       reduced.removeEventListener("change", render);
     };
   }, []);
   useEffect(() => {
-    if (paused || matchMedia("(prefers-reduced-motion: reduce)").matches)
-      return;
+    if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
     const id = setInterval(() => {
       if (!document.hidden) setEvent((v) => (v + 1) % events.length);
     }, 5500);
     return () => clearInterval(id);
-  }, [paused]);
+  }, []);
   return (
     <div className="globe-wrap">
       <div className="globe-heading">
@@ -374,49 +320,9 @@ export function Globe() {
       </div>
       <canvas
         ref={ref}
-        tabIndex={0}
         role="img"
-        aria-label="Illustrative globe showing a demo loop connecting 13 countries across Africa, Europe, the Americas, Asia, and Australia. Nigeria includes Kaduna and Lagos. Drag or use arrow keys to rotate."
+        aria-label="Illustrative globe showing a demo loop connecting 13 countries across Africa, Europe, the Americas, Asia, and Australia. Nigeria includes Kaduna and Lagos."
       />
-      <div className="globe-toolbar">
-        <span>Drag to explore</span>
-        <div>
-          <button
-            type="button"
-            className="globe-control"
-            aria-label="Rotate globe left"
-            onClick={() => controls.current?.rotate(-0.3)}
-          >
-            <ArrowLeft size={18} />
-          </button>
-          <button
-            type="button"
-            className="globe-control"
-            aria-label={
-              paused ? "Resume globe animation" : "Pause globe animation"
-            }
-            aria-pressed={paused}
-            onClick={() => {
-              const next = !paused;
-              setPaused(next);
-              controls.current?.pause(next);
-            }}
-          >
-            {paused ? <Play size={16} /> : <Pause size={16} />}
-          </button>
-          <button
-            type="button"
-            className="globe-control"
-            aria-label="Rotate globe right"
-            onClick={() => controls.current?.rotate(0.3)}
-          >
-            <ArrowRight size={18} />
-          </button>
-        </div>
-      </div>
-      <p className="globe-caption">
-        Illustrative demo connections, not a live merchant map.
-      </p>
       <div className="ticker">
         <b>● Demo data</b>
         <span>{events[event]}</span>
