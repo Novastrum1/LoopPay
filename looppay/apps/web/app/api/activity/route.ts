@@ -57,16 +57,28 @@ export async function GET(request: Request) {
       }),
       db.partner.findMany({ where: { optedIn: true }, take: 100 }),
     ]);
+    const sourceCampaigns = await db.campaign.findMany({
+      where: { id: { in: earnings.map((e) => e.campaignId) } },
+    });
+    const sourceMerchants = await db.merchant.findMany({
+      where: { id: { in: sourceCampaigns.map((c) => c.merchantId) } },
+    });
     const merchants = await db.merchant.findMany({
       where: { id: { in: optins.map((p) => p.id) } },
     });
     return Response.json({
       payments,
-      earnings,
+      earnings: earnings.map((e) => {
+        const c = sourceCampaigns.find((c) => c.id === e.campaignId);
+        const m = sourceMerchants.find((m) => m.id === c?.merchantId);
+        return { ...e, name: m ? parseMetadata(m.metadata).name : undefined };
+      }),
       redemptions,
       partners: merchants.map((m) => ({
         id: m.id,
-        name: parseMetadata(m.metadata).name ?? `Merchant #${m.id}`,
+        name: parseMetadata(m.metadata).name ?? `Shop #${m.id}`,
+        location: parseMetadata(m.metadata).location,
+        category: parseMetadata(m.metadata).category,
       })),
     });
   } catch {

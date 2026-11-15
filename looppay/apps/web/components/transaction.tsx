@@ -1,23 +1,38 @@
 "use client";
+import { useSwitchChain } from "wagmi";
+import { useDemo } from "./demo";
+import { Button } from "./ui/button";
 import { explorerLink } from "@looppay/config";
 import { useLoopPay, useTransaction } from "../lib/use-looppay";
 export function NetworkNotice() {
   const { network, account } = useLoopPay();
-  return !network ? (
-    <div className="notice">
-      Contracts are not configured. Set the public network variables after a
-      local or testnet deployment. No payment is available until setup is
-      complete.
-    </div>
-  ) : !account.address ? (
-    <div className="notice">
-      Connect a QIE-compatible injected wallet to continue. QIE Wallet must
-      expose an EVM provider in this browser.
+  const demo = useDemo();
+  const { switchChain, error, isPending } = useSwitchChain();
+  if (demo) return null;
+  return !network ? null : !account.address ? (
+    <div className="notice" role="status">
+      Connect your wallet above to view your rewards or make a payment.
     </div>
   ) : account.chainId !== network.chainId ? (
-    <div className="notice error" role="alert">
-      Unsupported network. Switch to chain {network.chainId} using the wallet
-      control above.
+    <div className="notice" role="alert">
+      <p>
+        Wrong network. Switch to{" "}
+        {network.chainId === 1983
+          ? "QIE Testnet"
+          : network.chainId === 31337
+            ? "Local Anvil"
+            : "QIE"}{" "}
+        to continue.
+      </p>
+      <Button
+        disabled={isPending}
+        onClick={() => switchChain({ chainId: network.chainId })}
+      >
+        {isPending ? "Switching…" : "Switch network"}
+      </Button>
+      {error ? (
+        <p>Open your wallet and approve the network change, then try again.</p>
+      ) : null}
     </div>
   ) : null;
 }

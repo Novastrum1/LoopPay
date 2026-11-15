@@ -1,4 +1,5 @@
 "use client";
+import { useDemo, useDeploymentReady } from "../components/demo";
 import { useAccount, usePublicClient, useWalletClient } from "wagmi";
 import { useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -6,20 +7,29 @@ import { LoopPaySDK } from "@looppay/sdk";
 import { configuredNetwork } from "./network";
 import type { Hash, TransactionReceipt } from "viem";
 export function useLoopPay() {
+  const demo = useDemo();
+  const deploymentReady = useDeploymentReady();
   const account = useAccount();
   const client = usePublicClient();
   const { data: wallet } = useWalletClient();
   const network = useMemo(() => configuredNetwork(), []);
   const sdk = useMemo(
-    () => (network && client ? new LoopPaySDK(network, client, wallet) : null),
-    [network, client, wallet],
+    () =>
+      !demo && network && client
+        ? new LoopPaySDK(network, client, wallet)
+        : null,
+    [network, client, wallet, demo],
   );
   return {
     sdk,
     network,
     account,
     ready:
-      !!network && !!account.address && account.chainId === network.chainId,
+      !demo &&
+      deploymentReady &&
+      !!network &&
+      !!account.address &&
+      account.chainId === network.chainId,
   };
 }
 export function useTransaction() {
@@ -51,7 +61,7 @@ export function useTransaction() {
         message: rejected
           ? "You rejected the wallet request. Nothing was confirmed."
           : error instanceof Error
-            ? error.message.slice(0, 350)
+            ? "The transaction could not be confirmed. Check your wallet history and network connection before trying again."
             : "Transaction failed. Check your wallet and try again.",
       });
     }

@@ -1,5 +1,6 @@
 "use client";
 import { useAccount, useConnect, useDisconnect, useSwitchChain } from "wagmi";
+import { useDemo } from "./demo";
 import { Wallet } from "lucide-react";
 import { configuredNetwork } from "../lib/network";
 import { Button } from "./ui/button";
@@ -9,7 +10,15 @@ export function WalletButton() {
   const { disconnect } = useDisconnect();
   const { switchChain } = useSwitchChain();
   const n = configuredNetwork();
-  if (!n) return <span className="pill">Local setup required</span>;
+  const demo = useDemo();
+  if (demo || !n)
+    return (
+      <span className="pill">
+        {process.env.NODE_ENV === "development"
+          ? "Demo mode · Local setup required"
+          : "Demo mode"}
+      </span>
+    );
   return (
     <div className="wallet-control">
       {address ? (
@@ -24,7 +33,7 @@ export function WalletButton() {
           </span>
           {chainId !== n.chainId ? (
             <Button onClick={() => switchChain({ chainId: n.chainId })}>
-              Switch network
+              Wrong network · Switch
             </Button>
           ) : (
             <Button variant="outline" onClick={() => disconnect()}>

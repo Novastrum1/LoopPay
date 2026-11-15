@@ -1,4 +1,5 @@
 "use client";
+import { DemoProvider } from "./demo";
 import { useState, type ReactNode } from "react";
 import { WagmiProvider, createConfig, http, injected } from "wagmi";
 import { anvil } from "viem/chains";
@@ -24,7 +25,9 @@ export function Providers({ children }: { children: ReactNode }) {
   });
   return (
     <WagmiProvider config={config}>
-      <QueryClientProvider client={query}>{children}</QueryClientProvider>
+      <QueryClientProvider client={query}>
+        <DemoProvider>{children}</DemoProvider>
+      </QueryClientProvider>
     </WagmiProvider>
   );
 }
