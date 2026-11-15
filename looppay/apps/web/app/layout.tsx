@@ -33,7 +33,14 @@ export default function Layout({ children }: { children: ReactNode }) {
       <head>
         <link
           rel="preload"
-          href="/brand/sora-latin.woff2"
+          href="/brand/figtree-variable.ttf"
+          as="font"
+          type="font/ttf"
+          crossOrigin="anonymous"
+        />
+        <link
+          rel="preload"
+          href="https://cdn.fontshare.com/wf/LAFFD4SDUCDVQEXFPDC7C53EQ4ZELWQI/PXCT3G6LO6ICM5I3NTYENYPWJAECAWDD/GHM6WVH6MILNYOOCXHXB5GTSGNTMGXZR.woff2"
           as="font"
           type="font/woff2"
           crossOrigin="anonymous"

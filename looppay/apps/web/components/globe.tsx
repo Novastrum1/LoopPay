@@ -114,7 +114,7 @@ export function Globe() {
         ctx.arc(x, y, 5, 0, 7);
         ctx.fill();
         if (i < 2) {
-          ctx.font = "600 16px Sora, sans-serif";
+          ctx.font = "600 16px Figtree, sans-serif";
           ctx.fillStyle = "#fff9f0";
           ctx.fillText(i === 0 ? "Kaduna" : "Lagos", x + 12, y - 10);
         }

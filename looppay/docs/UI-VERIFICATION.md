@@ -35,8 +35,9 @@ on the deployed Vercel URL with the intended production environment.
 
 The globe pauses off-screen and when the document is hidden, limits drawing to
 approximately 24 fps, caps devicePixelRatio at 2, and disables auto-rotation and
-pulses for reduced motion. The Sora font is served locally under its included
-OFL license. Marketing pages defer wallet providers, and marketing navigation
+pulses for reduced motion. Figtree body text is served locally under its included OFL license. Satoshi
+headings use Fontshare’s official CDN; its license notice is included and the
+font file is not redistributed through this repository. Marketing pages defer wallet providers, and marketing navigation
 does not prefetch the transaction workspace.
 
 ## Data boundaries and remaining setup
@@ -62,3 +63,5 @@ No contracts, ABI definitions, SDK methods, or environment variable names were
 changed. V1 campaigns support percentage rewards. Creation, token approval and
 reserve deposit remain separate transactions; reserve withdrawals are not
 supported. No Git push or deployment was performed.
+
+The recorded Lighthouse scores above predate the Figtree/Satoshi typography update.

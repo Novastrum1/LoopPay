@@ -1,7 +1,14 @@
 @font-face {
-  font-family: Sora;
-  src: url(/brand/sora-latin.woff2) format("woff2");
-  font-weight: 100 800;
+  font-family: Figtree;
+  src: url(/brand/figtree-variable.ttf) format("truetype");
+  font-weight: 300 900;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: Satoshi;
+  src: url(https://cdn.fontshare.com/wf/LAFFD4SDUCDVQEXFPDC7C53EQ4ZELWQI/PXCT3G6LO6ICM5I3NTYENYPWJAECAWDD/GHM6WVH6MILNYOOCXHXB5GTSGNTMGXZR.woff2) format("woff2");
+  font-weight: 700;
   font-style: normal;
   font-display: swap;
 }
@@ -27,7 +34,7 @@ body {
   margin: 0;
   background: var(--warm);
   color: var(--ink);
-  font-family: Sora, system-ui, sans-serif;
+  font-family: Figtree, system-ui, sans-serif;
   font-size: 16px;
   line-height: 1.65;
 }
@@ -56,9 +63,10 @@ textarea {
 h1,
 h2,
 h3 {
+  font-family: Satoshi, Figtree, system-ui, sans-serif;
   line-height: 1.15;
   letter-spacing: -0.045em;
-  font-weight: 600;
+  font-weight: 700;
 }
 h1 {
   font-size: clamp(36px, 5vw, 64px);
